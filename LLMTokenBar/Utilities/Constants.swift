@@ -9,14 +9,25 @@ enum Constants {
 
     enum Polling {
         static let successInterval: TimeInterval = 300
-        static let failureInterval: TimeInterval = 30
+        static let failureInterval: TimeInterval = 300
         static let rateLimitBaseInterval: TimeInterval = 300
         static let rateLimitMaxInterval: TimeInterval = 900
+    }
+
+    enum Gemini {
+        static let sessionBasePath = "\(NSHomeDirectory())/.gemini/tmp"
+        static let configPath = "\(NSHomeDirectory())/.gemini"
+    }
+
+    enum Codex {
+        static let sessionBasePath = "\(NSHomeDirectory())/.codex/sessions"
+        static let configPath = "\(NSHomeDirectory())/.codex"
     }
 
     enum Keychain {
         static let serviceName = "com.llmtokenbar.credentials"
         static let claudeAccount = "claude-oauth"
+        static let geminiAccount = "gemini-apikey"
     }
 
     enum UI {

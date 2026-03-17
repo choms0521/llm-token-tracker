@@ -10,6 +10,7 @@ final class StatusBarController: NSObject {
     private let tokenStats: TokenStatsService
     private var settingsWindow: NSWindow?
     private var eventMonitor: Any?
+    private var iconObserver: NSObjectProtocol?
 
     init(manager: UsagePollingManager, historyStore: UsageHistoryStore, tokenStats: TokenStatsService) {
         self.manager = manager
@@ -21,6 +22,7 @@ final class StatusBarController: NSObject {
 
         setupPopover()
         setupStatusItem()
+        observeIconChanges()
     }
 
     private func setupPopover() {
@@ -39,13 +41,34 @@ final class StatusBarController: NSObject {
     private func setupStatusItem() {
         guard let button = statusItem.button else { return }
 
+        let iconName = UserDefaults.standard.string(forKey: "statusBarIcon") ?? StatusBarIcon.default.rawValue
         button.image = NSImage(
-            systemSymbolName: "brain.head.profile",
+            systemSymbolName: iconName,
             accessibilityDescription: "Token Usage"
         )
         button.imagePosition = .imageLeading
         button.action = #selector(togglePopover)
         button.target = self
+    }
+
+    private func observeIconChanges() {
+        iconObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.updateIcon()
+            }
+        }
+    }
+
+    private func updateIcon() {
+        let iconName = UserDefaults.standard.string(forKey: "statusBarIcon") ?? StatusBarIcon.default.rawValue
+        statusItem.button?.image = NSImage(
+            systemSymbolName: iconName,
+            accessibilityDescription: "Token Usage"
+        )
     }
 
     func updateStatusText(_ text: String) {

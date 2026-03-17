@@ -19,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var historyStore: UsageHistoryStore?
     private var tokenStats: TokenStatsService?
     private var cancellables = Set<AnyCancellable>()
+    private var codexTimer: Timer?
+    private let codexParser = CodexSessionParser()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -46,10 +48,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
 
         pollingManager.startPolling()
+
+        // Load historical Codex rate limits from session files
+        loadCodexHistory()
+
+        // Poll Codex rate limits periodically
+        codexTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.recordCodexLimits()
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         manager?.stopPolling()
+        codexTimer?.invalidate()
+    }
+
+    private func recordCodexLimits() {
+        guard let limits = codexParser.latestRateLimits(),
+              limits.primary != nil else { return }
+        historyStore?.recordCodexLimits(limits)
+    }
+
+    private func loadCodexHistory() {
+        let snapshots = codexParser.allRateLimitSnapshots()
+        for snapshot in snapshots {
+            historyStore?.recordCodexSnapshot(
+                sessionUtilization: snapshot.limits.primary?.usedPercent,
+                weeklyUtilization: snapshot.limits.secondary?.usedPercent,
+                timestamp: snapshot.timestamp
+            )
+        }
     }
 
     private func updateStatusBar(usage: UsageData) {

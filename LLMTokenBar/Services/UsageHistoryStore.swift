@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "UsageHistory")
 
 @MainActor
 final class UsageHistoryStore: ObservableObject {
@@ -36,6 +39,38 @@ final class UsageHistoryStore: ObservableObject {
 
         self.storePath = resolvedStorePath
         loadFromDisk()
+    }
+
+    func recordCodexLimits(_ limits: CodexRateLimits) {
+        recordCodexSnapshot(
+            sessionUtilization: limits.primary?.usedPercent,
+            weeklyUtilization: limits.secondary?.usedPercent,
+            timestamp: now()
+        )
+    }
+
+    func recordCodexSnapshot(
+        sessionUtilization: Double?,
+        weeklyUtilization: Double?,
+        timestamp: Date
+    ) {
+        // Avoid duplicate timestamps
+        let isDuplicate = snapshots.contains { s in
+            s.provider == .openai
+                && abs(s.timestamp.timeIntervalSince(timestamp)) < 1
+        }
+        guard !isDuplicate else { return }
+
+        let snapshot = UsageSnapshot(
+            timestamp: timestamp,
+            provider: .openai,
+            sessionUtilization: sessionUtilization,
+            weeklyUtilization: weeklyUtilization,
+            modelUtilizations: [:]
+        )
+        snapshots.append(snapshot)
+        pruneOld()
+        saveToDisk()
     }
 
     func record(from usage: UsageData) {
@@ -92,14 +127,24 @@ final class UsageHistoryStore: ObservableObject {
     }
 
     private func loadFromDisk() {
-        guard fileManager.fileExists(atPath: storePath),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: storePath)) else {
+        guard fileManager.fileExists(atPath: storePath) else { return }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: URL(fileURLWithPath: storePath))
+        } catch {
+            logger.error("히스토리 파일 읽기 실패 (\(self.storePath)): \(error.localizedDescription)")
             return
         }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        snapshots = (try? decoder.decode([UsageSnapshot].self, from: data)) ?? []
+        do {
+            snapshots = try decoder.decode([UsageSnapshot].self, from: data)
+        } catch {
+            logger.error("히스토리 JSON 파싱 실패: \(error.localizedDescription)")
+            snapshots = []
+        }
         pruneOld()
     }
 
@@ -108,7 +153,18 @@ final class UsageHistoryStore: ObservableObject {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = .prettyPrinted
 
-        guard let data = try? encoder.encode(snapshots) else { return }
-        try? data.write(to: URL(fileURLWithPath: storePath), options: .atomic)
+        let data: Data
+        do {
+            data = try encoder.encode(snapshots)
+        } catch {
+            logger.error("히스토리 인코딩 실패: \(error.localizedDescription)")
+            return
+        }
+
+        do {
+            try data.write(to: URL(fileURLWithPath: storePath), options: .atomic)
+        } catch {
+            logger.error("히스토리 저장 실패 (\(self.storePath)): \(error.localizedDescription)")
+        }
     }
 }

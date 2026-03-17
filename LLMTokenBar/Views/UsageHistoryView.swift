@@ -66,9 +66,8 @@ struct UsageHistoryView: View {
     private var providerSelector: some View {
         HStack(spacing: 0) {
             providerTab(nil, label: "전체")
-            ForEach(Provider.allCases) { provider in
-                providerTab(provider, label: provider.displayName)
-            }
+            providerTab(.claude, label: Provider.claude.displayName)
+            providerTab(.openai, label: Provider.openai.displayName)
         }
         .background(.quaternary.opacity(0.3))
         .clipShape(RoundedRectangle(cornerRadius: 8))
