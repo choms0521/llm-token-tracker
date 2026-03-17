@@ -12,15 +12,18 @@ final class TokenStatsService: ObservableObject {
     private let statsPath: String
     private let fileManager: FileManager
     private let geminiParser: GeminiSessionParser
+    private let codexParser: CodexSessionParser
 
     init(
         statsPath: String = "\(NSHomeDirectory())/.claude/stats-cache.json",
         fileManager: FileManager = .default,
-        geminiParser: GeminiSessionParser = GeminiSessionParser()
+        geminiParser: GeminiSessionParser = GeminiSessionParser(),
+        codexParser: CodexSessionParser = CodexSessionParser()
     ) {
         self.statsPath = statsPath
         self.fileManager = fileManager
         self.geminiParser = geminiParser
+        self.codexParser = codexParser
     }
 
     func reload() {
@@ -78,6 +81,11 @@ final class TokenStatsService: ObservableObject {
         // Gemini local session data
         let geminiData = geminiParser.parse()
         dailyTokens.append(contentsOf: geminiData.dailyTokens)
+
+        // Codex local session data
+        let codexData = codexParser.parse()
+        dailyTokens.append(contentsOf: codexData.dailyTokens)
+
         dailyTokens.sort { $0.date < $1.date }
     }
 
@@ -106,10 +114,28 @@ struct RecentModelUsage: Identifiable {
     let tokens: Int
 
     var displayName: String {
-        modelId
+        formatModelName(modelId)
+    }
+
+    private func formatModelName(_ id: String) -> String {
+        if id.hasPrefix("gemini-") {
+            // "gemini-3-flash-preview" → "Gemini-3-Flash"
+            return id.replacingOccurrences(of: "-preview", with: "")
+                .split(separator: "-")
+                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                .joined(separator: "-")
+        }
+        if id.hasPrefix("gpt-") || id.hasPrefix("o1") || id.hasPrefix("o3") || id.hasPrefix("o4") {
+            // "gpt-5.4" → "GPT-5.4", "o3-mini" → "O3-Mini"
+            return id.split(separator: "-")
+                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                .joined(separator: "-")
+        }
+        // "claude-opus-4-6" → "Opus-4-6"
+        return id
             .replacingOccurrences(of: "claude-", with: "")
             .components(separatedBy: "-")
-            .prefix(2)
+            .prefix(3)
             .joined(separator: "-")
             .capitalized
     }

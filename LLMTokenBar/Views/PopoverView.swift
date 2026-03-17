@@ -4,6 +4,7 @@ struct PopoverView: View {
     @ObservedObject var manager: UsagePollingManager
     @ObservedObject var tokenStats: TokenStatsService
     var onOpenSettings: () -> Void
+    private let codexParser = CodexSessionParser()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -74,6 +75,12 @@ struct PopoverView: View {
                     UsageCardView(entry: weekly)
                 }
 
+                codexRateLimitView
+
+                if !tokenStats.recentModelUsages.isEmpty {
+                    modelBreakdownView
+                }
+
                 if !manager.syncStatus.isConnected {
                     disconnectedView
                 }
@@ -84,7 +91,7 @@ struct PopoverView: View {
 
     private var modelBreakdownView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("모델별 사용량 (최근 7일)")
+            Text("토큰 사용량 (최근 7일)")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
 
@@ -95,6 +102,44 @@ struct PopoverView: View {
         .padding(12)
         .background(.quaternary.opacity(0.5))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var codexRateLimitView: some View {
+        if let limits = codexParser.latestRateLimits() {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: "cpu")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.green)
+                    Text("OpenAI Codex")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                if let primary = limits.primary {
+                    let resetDate = primary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+                    let isReset = resetDate.map { $0 < Date() } ?? false
+                    UsageCardView(entry: UsageEntry(
+                        label: "세션 사용량 (5시간)",
+                        sublabel: "Codex \(limits.planType ?? "plus")",
+                        utilization: isReset ? 0 : (primary.usedPercent ?? 0),
+                        resetsAt: isReset ? nil : resetDate
+                    ))
+                }
+
+                if let secondary = limits.secondary {
+                    let resetDate = secondary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+                    let isReset = resetDate.map { $0 < Date() } ?? false
+                    UsageCardView(entry: UsageEntry(
+                        label: "주간 사용량 (7일)",
+                        sublabel: "Codex \(limits.planType ?? "plus")",
+                        utilization: isReset ? 0 : (secondary.usedPercent ?? 0),
+                        resetsAt: isReset ? nil : resetDate
+                    ))
+                }
+            }
+        }
     }
 
     private func errorBanner(_ message: String) -> some View {

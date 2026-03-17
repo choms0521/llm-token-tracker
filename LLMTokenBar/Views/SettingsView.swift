@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case claude = "Claude"
@@ -59,6 +60,17 @@ struct SettingsView: View {
         }
         .listStyle(.sidebar)
         .frame(minWidth: 160)
+        .safeAreaInset(edge: .bottom) {
+            Button(action: { NSApp.terminate(nil) }) {
+                Label("앱 종료", systemImage: "power")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     @ViewBuilder
@@ -73,9 +85,9 @@ struct SettingsView: View {
                 onSyncFromCLI: { manager.syncFromCLI() }
             )
         case .gemini:
-            ComingSoonView(provider: .gemini)
+            GeminiSettingsView()
         case .openai:
-            ComingSoonView(provider: .openai)
+            OpenAISettingsView()
         case .history:
             UsageHistoryView(historyStore: historyStore)
         case .tokens:
@@ -337,6 +349,38 @@ struct ComingSoonView: View {
     }
 }
 
+enum StatusBarIcon: String, CaseIterable, Identifiable {
+    case brainHeadProfile = "brain.head.profile"
+    case brain = "brain"
+    case cpu = "cpu"
+    case memorychip = "memorychip"
+    case gauge = "gauge.with.needle"
+    case chartBar = "chart.bar.fill"
+    case sparkles = "sparkles"
+    case wandAndStars = "wand.and.stars"
+    case atom = "atom"
+    case function = "function"
+
+    var id: String { rawValue }
+
+    static let `default`: StatusBarIcon = .brainHeadProfile
+
+    var displayName: String {
+        switch self {
+        case .brainHeadProfile: return "Brain Profile (기본)"
+        case .brain: return "Brain"
+        case .cpu: return "CPU"
+        case .memorychip: return "Memory Chip"
+        case .gauge: return "Gauge"
+        case .chartBar: return "Chart"
+        case .sparkles: return "Sparkles"
+        case .wandAndStars: return "Wand & Stars"
+        case .atom: return "Atom"
+        case .function: return "Function"
+        }
+    }
+}
+
 enum StatusBarMetric: String, CaseIterable, Identifiable {
     case session = "세션 사용량 (5시간)"
     case weekly = "주간 사용량 (7일)"
@@ -348,9 +392,10 @@ enum StatusBarMetric: String, CaseIterable, Identifiable {
 }
 
 struct GeneralSettingsView: View {
-    @AppStorage("launchAtLogin") private var launchAtLogin = false
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("pollingInterval") private var pollingInterval = 90.0
     @AppStorage("statusBarMetric") private var statusBarMetric = "session"
+    @AppStorage("statusBarIcon") private var statusBarIcon = StatusBarIcon.default.rawValue
 
     var body: some View {
         Form {
@@ -370,8 +415,32 @@ struct GeneralSettingsView: View {
                     .foregroundStyle(.tertiary)
             }
 
+            Section("메뉴바 아이콘") {
+                Picker("아이콘", selection: $statusBarIcon) {
+                    ForEach(StatusBarIcon.allCases) { icon in
+                        Label(icon.displayName, systemImage: icon.rawValue)
+                            .tag(icon.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
             Section("시작") {
-                Toggle("로그인 시 자동 실행", isOn: $launchAtLogin)
+                Toggle("로그인 시 자동 실행", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                            launchAtLogin = newValue
+                        } catch {
+                            launchAtLogin = SMAppService.mainApp.status == .enabled
+                        }
+                    }
+                ))
             }
 
             Section("업데이트 주기") {

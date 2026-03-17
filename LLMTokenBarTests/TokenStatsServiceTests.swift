@@ -25,7 +25,8 @@ final class TokenStatsServiceTests: XCTestCase {
 
         let service = TokenStatsService(
             statsPath: statsURL.path,
-            geminiParser: GeminiSessionParser(basePath: "/nonexistent")
+            geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
+            codexParser: CodexSessionParser(basePath: "/nonexistent")
         )
         service.reload()
 
@@ -41,7 +42,8 @@ final class TokenStatsServiceTests: XCTestCase {
         let statsURL = temporaryDirectory.appendingPathComponent("missing.json")
         let service = TokenStatsService(
             statsPath: statsURL.path,
-            geminiParser: GeminiSessionParser(basePath: "/nonexistent")
+            geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
+            codexParser: CodexSessionParser(basePath: "/nonexistent")
         )
 
         service.modelSummaries = [

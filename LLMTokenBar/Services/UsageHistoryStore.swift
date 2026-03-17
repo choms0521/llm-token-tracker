@@ -41,6 +41,38 @@ final class UsageHistoryStore: ObservableObject {
         loadFromDisk()
     }
 
+    func recordCodexLimits(_ limits: CodexRateLimits) {
+        recordCodexSnapshot(
+            sessionUtilization: limits.primary?.usedPercent,
+            weeklyUtilization: limits.secondary?.usedPercent,
+            timestamp: now()
+        )
+    }
+
+    func recordCodexSnapshot(
+        sessionUtilization: Double?,
+        weeklyUtilization: Double?,
+        timestamp: Date
+    ) {
+        // Avoid duplicate timestamps
+        let isDuplicate = snapshots.contains { s in
+            s.provider == .openai
+                && abs(s.timestamp.timeIntervalSince(timestamp)) < 1
+        }
+        guard !isDuplicate else { return }
+
+        let snapshot = UsageSnapshot(
+            timestamp: timestamp,
+            provider: .openai,
+            sessionUtilization: sessionUtilization,
+            weeklyUtilization: weeklyUtilization,
+            modelUtilizations: [:]
+        )
+        snapshots.append(snapshot)
+        pruneOld()
+        saveToDisk()
+    }
+
     func record(from usage: UsageData) {
         var modelUtils: [String: Double] = [:]
         for model in usage.modelUsages {

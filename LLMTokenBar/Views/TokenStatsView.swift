@@ -1,13 +1,21 @@
 import SwiftUI
 import Charts
 
+enum ChartTimeRange: String, CaseIterable, Identifiable {
+    case daily = "일별"
+    case monthly = "월별"
+
+    var id: String { rawValue }
+}
+
 struct TokenStatsView: View {
     @StateObject private var service = TokenStatsService()
     @State private var selectedMonth: DateComponents = {
         let cal = Calendar.current
         return cal.dateComponents([.year, .month], from: Date())
     }()
-    @State private var selectedProvider: String? = nil // nil = 전체
+    @State private var selectedProvider: String? = nil
+    @State private var chartTimeRange: ChartTimeRange = .daily
 
     private static let providerFilters: [(id: String?, label: String)] = [
         (nil, "전체"),
@@ -18,8 +26,14 @@ struct TokenStatsView: View {
 
     private func matchesProvider(_ modelId: String) -> Bool {
         guard let provider = selectedProvider else { return true }
-        return modelId.lowercased().contains(provider)
+        let id = modelId.lowercased()
+        if provider == "openai" {
+            return id.hasPrefix("gpt") || id.hasPrefix("o1") || id.hasPrefix("o3") || id.hasPrefix("o4") || id.hasPrefix("chatgpt")
+        }
+        return id.contains(provider)
     }
+
+    // MARK: - Daily filtered data
 
     private var filteredDailyTokens: [DailyTokenEntry] {
         let cal = Calendar.current
@@ -31,9 +45,44 @@ struct TokenStatsView: View {
         }
     }
 
+    // MARK: - Monthly aggregated data
+
+    private var monthlyTokenEntries: [DailyTokenEntry] {
+        let cal = Calendar.current
+        let filtered = service.dailyTokens.filter { matchesProvider($0.modelId) }
+
+        var monthlyMap: [String: [String: Int]] = [:]
+        for entry in filtered {
+            let dc = cal.dateComponents([.year, .month], from: entry.date)
+            guard let year = dc.year, let month = dc.month else { continue }
+            let key = String(format: "%04d-%02d", year, month)
+            monthlyMap[key, default: [:]][entry.modelId, default: 0] += entry.tokens
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM"
+
+        return monthlyMap.flatMap { (monthStr, models) -> [DailyTokenEntry] in
+            guard let date = dateFormatter.date(from: monthStr) else { return [] }
+            return models.map { (modelId, tokens) in
+                DailyTokenEntry(
+                    id: "\(monthStr)-\(modelId)",
+                    date: date,
+                    modelId: modelId,
+                    tokens: tokens
+                )
+            }
+        }.sorted { $0.date < $1.date }
+    }
+
+    private var currentChartData: [DailyTokenEntry] {
+        chartTimeRange == .daily ? filteredDailyTokens : monthlyTokenEntries
+    }
+
     private var filteredModelSummaries: [MonthlyModelSummary] {
+        let source = chartTimeRange == .daily ? filteredDailyTokens : monthlyTokenEntries
         var tokensByModel: [String: Int] = [:]
-        for entry in filteredDailyTokens {
+        for entry in source {
             tokensByModel[entry.modelId, default: 0] += entry.tokens
         }
         return tokensByModel
@@ -57,7 +106,7 @@ struct TokenStatsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 headerView
                 providerSelector
-                dailyChart
+                tokenChart
                 modelBreakdown
             }
             .padding(24)
@@ -72,7 +121,7 @@ struct TokenStatsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("토큰 사용량")
                     .font(.title2.bold())
-                Text("모델별 토큰 사용 통계 (Claude Code 로컬 데이터)")
+                Text("모델별 토큰 사용 통계 (로컬 데이터)")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
@@ -107,68 +156,116 @@ struct TokenStatsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    // MARK: - Daily Chart
+    // MARK: - Chart
 
-    private var dailyChart: some View {
+    private var tokenChart: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "chart.bar.fill")
                     .foregroundStyle(.secondary)
-                Text("Tokens per Day")
-                    .font(.system(size: 13, weight: .medium))
+
+                // Time range toggle
+                Picker("", selection: $chartTimeRange) {
+                    ForEach(ChartTimeRange.allCases) { range in
+                        Text(range.rawValue).tag(range)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 120)
 
                 Spacer()
 
-                monthPicker
+                if chartTimeRange == .daily {
+                    monthPicker
+                }
             }
 
-            if filteredDailyTokens.isEmpty {
+            if currentChartData.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "chart.bar.xaxis")
                         .font(.system(size: 28))
                         .foregroundStyle(.secondary)
-                    Text("\(monthLabel) 데이터 없음")
+                    Text(chartTimeRange == .daily ? "\(monthLabel) 데이터 없음" : "데이터 없음")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 .frame(height: 300)
                 .frame(maxWidth: .infinity)
+            } else if chartTimeRange == .daily {
+                dailyChartContent
             } else {
-                Chart(filteredDailyTokens) { entry in
-                    BarMark(
-                        x: .value("날짜", entry.date, unit: .day),
-                        y: .value("토큰", entry.tokens)
-                    )
-                    .foregroundStyle(by: .value("모델", entry.modelId))
-                }
-                .chartForegroundStyleScale { (modelId: String) -> Color in
-                    Self.colorForModelId(modelId)
-                }
-                .chartYAxis {
-                    AxisMarks { value in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
-                        AxisValueLabel {
-                            if let v = value.as(Int.self) {
-                                Text(formatTokenCount(v))
-                                    .font(.system(size: 9))
-                            }
-                        }
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .day, count: 5)) { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
-                        AxisValueLabel(format: .dateTime.month().day())
-                            .font(.system(size: 9))
-                    }
-                }
-                .chartLegend(position: .bottom, spacing: 8)
-                .frame(height: 300)
+                monthlyChartContent
             }
         }
         .padding(16)
         .background(.quaternary.opacity(0.5))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var dailyChartContent: some View {
+        Chart(filteredDailyTokens) { entry in
+            BarMark(
+                x: .value("날짜", entry.date, unit: .day),
+                y: .value("토큰", entry.tokens)
+            )
+            .foregroundStyle(by: .value("모델", entry.modelId))
+        }
+        .chartForegroundStyleScale { (modelId: String) -> Color in
+            Self.colorForModelId(modelId)
+        }
+        .chartYAxis {
+            AxisMarks { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
+                AxisValueLabel {
+                    if let v = value.as(Int.self) {
+                        Text(formatTokenCount(v))
+                            .font(.system(size: 9))
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: 5)) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
+                AxisValueLabel(format: .dateTime.month().day())
+                    .font(.system(size: 9))
+            }
+        }
+        .chartLegend(position: .bottom, spacing: 8)
+        .frame(height: 300)
+    }
+
+    private var monthlyChartContent: some View {
+        Chart(monthlyTokenEntries) { entry in
+            BarMark(
+                x: .value("월", entry.date, unit: .month),
+                y: .value("토큰", entry.tokens)
+            )
+            .foregroundStyle(by: .value("모델", entry.modelId))
+        }
+        .chartForegroundStyleScale { (modelId: String) -> Color in
+            Self.colorForModelId(modelId)
+        }
+        .chartYAxis {
+            AxisMarks { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
+                AxisValueLabel {
+                    if let v = value.as(Int.self) {
+                        Text(formatTokenCount(v))
+                            .font(.system(size: 9))
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .month)) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
+                AxisValueLabel(format: .dateTime.year().month(.abbreviated))
+                    .font(.system(size: 9))
+            }
+        }
+        .chartLegend(position: .bottom, spacing: 8)
+        .frame(height: 300)
     }
 
     private var monthPicker: some View {
@@ -216,10 +313,10 @@ struct TokenStatsView: View {
     private var modelBreakdown: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Models by Usage")
+                Text("모델별 사용량")
                     .font(.system(size: 13, weight: .medium))
                 Spacer()
-                Text("Total: \(formatTokenCount(filteredTotalTokens))")
+                Text("합계: \(formatTokenCount(filteredTotalTokens))")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.orange)
             }
@@ -249,6 +346,8 @@ struct TokenStatsView: View {
         if id.contains("haiku") { return .teal }
         if id.contains("gemini") && id.contains("flash") { return .blue }
         if id.contains("gemini") && id.contains("pro") { return .cyan }
+        if id.contains("gpt") { return .green }
+        if id.hasPrefix("o1") || id.hasPrefix("o3") || id.hasPrefix("o4") { return .mint }
         return .gray
     }
 
