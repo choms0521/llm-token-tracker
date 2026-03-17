@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import Security
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "ClaudeAuth")
 
 enum AuthError: LocalizedError {
     case credentialsNotFound
@@ -95,6 +98,9 @@ final class ClaudeAuthService: AuthServiceProtocol {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         guard status == errSecSuccess, let data = result as? Data else {
+            if status != errSecItemNotFound {
+                logger.warning("Keychain 조회 실패 (OSStatus: \(status))")
+            }
             return nil
         }
 
@@ -103,27 +109,39 @@ final class ClaudeAuthService: AuthServiceProtocol {
 
     private func readFromFile() -> ClaudeOAuth? {
         let path = Constants.Claude.credentialsPath
-        guard FileManager.default.fileExists(atPath: path),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+        guard FileManager.default.fileExists(atPath: path) else {
             return nil
         }
 
-        return parseCredentialData(data)
+        do {
+            let data = try Data(contentsOf: URL(fileURLWithPath: path))
+            return parseCredentialData(data)
+        } catch {
+            logger.error("자격증명 파일 읽기 실패 (\(path)): \(error.localizedDescription)")
+            return nil
+        }
     }
 
     private func parseCredentialData(_ data: Data) -> ClaudeOAuth? {
+        let decoder = JSONDecoder()
+
         // Try nested format: { "claudeAiOauth": { ... } }
-        if let wrapper = try? JSONDecoder().decode(ClaudeCredentialsWrapper.self, from: data),
-           let oauth = wrapper.claudeAiOauth {
-            return oauth
+        do {
+            let wrapper = try decoder.decode(ClaudeCredentialsWrapper.self, from: data)
+            if let oauth = wrapper.claudeAiOauth {
+                return oauth
+            }
+        } catch {
+            logger.debug("Nested 형식 파싱 실패, flat 형식 시도: \(error.localizedDescription)")
         }
 
         // Try flat format: { "accessToken": ..., "refreshToken": ... }
-        if let oauth = try? JSONDecoder().decode(ClaudeOAuth.self, from: data) {
-            return oauth
+        do {
+            return try decoder.decode(ClaudeOAuth.self, from: data)
+        } catch {
+            logger.error("자격증명 파싱 실패 (모든 형식): \(error.localizedDescription)")
+            return nil
         }
-
-        return nil
     }
 
 }

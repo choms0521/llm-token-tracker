@@ -23,7 +23,10 @@ final class TokenStatsServiceTests: XCTestCase {
         let statsURL = temporaryDirectory.appendingPathComponent("stats-cache.json")
         try makeSampleStatsJSON().data(using: .utf8)?.write(to: statsURL)
 
-        let service = TokenStatsService(statsPath: statsURL.path)
+        let service = TokenStatsService(
+            statsPath: statsURL.path,
+            geminiParser: GeminiSessionParser(basePath: "/nonexistent")
+        )
         service.reload()
 
         XCTAssertEqual(service.modelSummaries.count, 2)
@@ -36,7 +39,10 @@ final class TokenStatsServiceTests: XCTestCase {
     @MainActor
     func testReloadClearsExistingStateWhenFileIsMissing() {
         let statsURL = temporaryDirectory.appendingPathComponent("missing.json")
-        let service = TokenStatsService(statsPath: statsURL.path)
+        let service = TokenStatsService(
+            statsPath: statsURL.path,
+            geminiParser: GeminiSessionParser(basePath: "/nonexistent")
+        )
 
         service.modelSummaries = [
             ModelSummary(

@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "TokenStats")
 
 @MainActor
 final class TokenStatsService: ObservableObject {
@@ -8,13 +11,16 @@ final class TokenStatsService: ObservableObject {
 
     private let statsPath: String
     private let fileManager: FileManager
+    private let geminiParser: GeminiSessionParser
 
     init(
         statsPath: String = "\(NSHomeDirectory())/.claude/stats-cache.json",
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        geminiParser: GeminiSessionParser = GeminiSessionParser()
     ) {
         self.statsPath = statsPath
         self.fileManager = fileManager
+        self.geminiParser = geminiParser
     }
 
     func reload() {
@@ -22,12 +28,21 @@ final class TokenStatsService: ObservableObject {
         dailyTokens = []
         totalCost = 0
 
-        guard fileManager.fileExists(atPath: statsPath),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: statsPath)) else {
+        guard fileManager.fileExists(atPath: statsPath) else { return }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: URL(fileURLWithPath: statsPath))
+        } catch {
+            logger.error("Stats 파일 읽기 실패 (\(self.statsPath)): \(error.localizedDescription)")
             return
         }
 
-        guard let stats = try? JSONDecoder().decode(StatsCache.self, from: data) else {
+        let stats: StatsCache
+        do {
+            stats = try JSONDecoder().decode(StatsCache.self, from: data)
+        } catch {
+            logger.error("Stats JSON 파싱 실패: \(error.localizedDescription)")
             return
         }
 
@@ -59,6 +74,11 @@ final class TokenStatsService: ObservableObject {
             }
             dailyTokens = entries.sorted { $0.date < $1.date }
         }
+
+        // Gemini local session data
+        let geminiData = geminiParser.parse()
+        dailyTokens.append(contentsOf: geminiData.dailyTokens)
+        dailyTokens.sort { $0.date < $1.date }
     }
 
     var allModelIds: [String] {

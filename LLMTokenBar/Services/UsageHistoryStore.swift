@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "UsageHistory")
 
 @MainActor
 final class UsageHistoryStore: ObservableObject {
@@ -92,14 +95,24 @@ final class UsageHistoryStore: ObservableObject {
     }
 
     private func loadFromDisk() {
-        guard fileManager.fileExists(atPath: storePath),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: storePath)) else {
+        guard fileManager.fileExists(atPath: storePath) else { return }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: URL(fileURLWithPath: storePath))
+        } catch {
+            logger.error("히스토리 파일 읽기 실패 (\(self.storePath)): \(error.localizedDescription)")
             return
         }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        snapshots = (try? decoder.decode([UsageSnapshot].self, from: data)) ?? []
+        do {
+            snapshots = try decoder.decode([UsageSnapshot].self, from: data)
+        } catch {
+            logger.error("히스토리 JSON 파싱 실패: \(error.localizedDescription)")
+            snapshots = []
+        }
         pruneOld()
     }
 
@@ -108,7 +121,18 @@ final class UsageHistoryStore: ObservableObject {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = .prettyPrinted
 
-        guard let data = try? encoder.encode(snapshots) else { return }
-        try? data.write(to: URL(fileURLWithPath: storePath), options: .atomic)
+        let data: Data
+        do {
+            data = try encoder.encode(snapshots)
+        } catch {
+            logger.error("히스토리 인코딩 실패: \(error.localizedDescription)")
+            return
+        }
+
+        do {
+            try data.write(to: URL(fileURLWithPath: storePath), options: .atomic)
+        } catch {
+            logger.error("히스토리 저장 실패 (\(self.storePath)): \(error.localizedDescription)")
+        }
     }
 }
