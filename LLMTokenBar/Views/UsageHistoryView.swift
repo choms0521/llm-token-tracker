@@ -4,7 +4,7 @@ import Charts
 struct UsageHistoryView: View {
     @ObservedObject var historyStore: UsageHistoryStore
     @State private var selectedRange: TimeRange = .twentyFourHours
-    @State private var selectedProvider: Provider? = .claude
+    @State private var selectedProvider: Provider = .claude
     @State private var showSession = true
     @State private var showWeekly = true
     @State private var selectedModels: Set<String> = []
@@ -65,7 +65,6 @@ struct UsageHistoryView: View {
 
     private var providerSelector: some View {
         HStack(spacing: 0) {
-            providerTab(nil, label: "전체")
             providerTab(.claude, label: Provider.claude.displayName)
             providerTab(.openai, label: Provider.openai.displayName)
         }
@@ -73,7 +72,7 @@ struct UsageHistoryView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func providerTab(_ provider: Provider?, label: String) -> some View {
+    private func providerTab(_ provider: Provider, label: String) -> some View {
         Button(action: {
             selectedProvider = provider
             selectedModels = []
