@@ -53,7 +53,7 @@ final class ClaudeUsageService: UsageServiceProtocol {
         }
     }
 
-    private func fetchWithToken(_ token: String) async throws -> UsageData {
+    private func fetchWithToken(_ token: String, retryCount: Int = 0) async throws -> UsageData {
         let url = URL(string: Constants.Claude.usageURL)!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -72,6 +72,12 @@ final class ClaudeUsageService: UsageServiceProtocol {
         case 401:
             throw UsageError.unauthorized
         case 429:
+            if retryCount < 1 {
+                let delay: TimeInterval = httpResponse.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(TimeInterval.init) ?? 3.0
+                try await Task.sleep(for: .seconds(min(delay, 10.0)))
+                return try await fetchWithToken(token, retryCount: retryCount + 1)
+            }
             let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
                 .flatMap(TimeInterval.init)
             throw UsageError.rateLimited(retryAfter: retryAfter)

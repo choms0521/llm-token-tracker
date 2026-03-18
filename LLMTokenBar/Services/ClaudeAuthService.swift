@@ -46,6 +46,10 @@ final class ClaudeAuthService: AuthServiceProtocol {
 
     func reloadCredentials() async throws -> String {
         cachedOAuth = nil
+        try? KeychainService.shared.delete(
+            service: Constants.Keychain.serviceName,
+            account: Constants.Keychain.claudeAccount
+        )
         return try await loadCredentials()
     }
 
@@ -70,23 +74,42 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
     }
 
-    // MARK: - Credential Reading (Keychain → File fallback)
+    // MARK: - Credential Reading (App Keychain → Claude Code Keychain → File fallback)
 
     private func readCredentials() throws -> ClaudeOAuth {
-        // Try Keychain first (primary on macOS)
-        if let oauth = readFromKeychain() {
+        // 1. Try app's own Keychain first (no permission prompt)
+        if let oauth = readFromAppKeychain(), !oauth.isExpired {
             return oauth
         }
 
-        // Fallback to file
+        // 2. Try Claude Code's Keychain (may prompt once)
+        if let oauth = readFromClaudeKeychain() {
+            cacheToAppKeychain(oauth)
+            return oauth
+        }
+
+        // 3. Fallback to file
         if let oauth = readFromFile() {
+            cacheToAppKeychain(oauth)
             return oauth
         }
 
         throw AuthError.credentialsNotFound
     }
 
-    private func readFromKeychain() -> ClaudeOAuth? {
+    private func readFromAppKeychain() -> ClaudeOAuth? {
+        do {
+            let data = try KeychainService.shared.load(
+                service: Constants.Keychain.serviceName,
+                account: Constants.Keychain.claudeAccount
+            )
+            return parseCredentialData(data)
+        } catch {
+            return nil
+        }
+    }
+
+    private func readFromClaudeKeychain() -> ClaudeOAuth? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "Claude Code-credentials",
@@ -105,6 +128,14 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
 
         return parseCredentialData(data)
+    }
+
+    private func cacheToAppKeychain(_ oauth: ClaudeOAuth) {
+        do {
+            try KeychainService.shared.save(oauth, service: Constants.Keychain.serviceName, account: Constants.Keychain.claudeAccount)
+        } catch {
+            logger.warning("앱 Keychain 캐싱 실패: \(error.localizedDescription)")
+        }
     }
 
     private func readFromFile() -> ClaudeOAuth? {
