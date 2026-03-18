@@ -8,10 +8,10 @@ enum Constants {
     }
 
     enum Polling {
-        static let successInterval: TimeInterval = 300
-        static let failureInterval: TimeInterval = 300
-        static let rateLimitBaseInterval: TimeInterval = 300
-        static let rateLimitMaxInterval: TimeInterval = 900
+        static let successInterval: TimeInterval = 600      // 10분
+        static let failureInterval: TimeInterval = 300      // 5분
+        static let rateLimitBaseInterval: TimeInterval = 600 // 10분 base
+        static let rateLimitMaxInterval: TimeInterval = 1800 // 30분 max
     }
 
     enum Gemini {

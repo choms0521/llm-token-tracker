@@ -13,6 +13,7 @@ final class UsagePollingManager: ObservableObject {
     private var pollingTask: Task<Void, Never>?
     private var consecutiveFailures = 0
     private var lastError: Error?
+    private var rateLimitedUntil: Date?
 
     init() {
         let authService = ClaudeAuthService()
@@ -43,6 +44,10 @@ final class UsagePollingManager: ObservableObject {
     }
 
     func refresh() {
+        if let rateLimitedUntil, Date() < rateLimitedUntil {
+            errorMessage = "Rate limit 해제 대기 중"
+            return
+        }
         Task {
             await fetchAll()
         }
@@ -59,10 +64,19 @@ final class UsagePollingManager: ObservableObject {
             claudeUsage = usage
             consecutiveFailures = 0
             lastError = nil
+            rateLimitedUntil = nil
         } catch {
             consecutiveFailures += 1
             lastError = error
             errorMessage = error.localizedDescription
+
+            if let usageError = error as? UsageError,
+               let retryAfter = usageError.retryAfterInterval {
+                rateLimitedUntil = Date().addingTimeInterval(retryAfter)
+            } else if case UsageError.rateLimited = error {
+                let backoff = nextRateLimitBackoff()
+                rateLimitedUntil = Date().addingTimeInterval(backoff)
+            }
 
             let isRateLimited: Bool
             if case UsageError.rateLimited = error {
@@ -84,11 +98,19 @@ final class UsagePollingManager: ObservableObject {
         }
 
         if let lastError, case UsageError.rateLimited = lastError {
-            let backoff = Constants.Polling.rateLimitBaseInterval * pow(2.0, Double(consecutiveFailures - 1))
-            return min(backoff, Constants.Polling.rateLimitMaxInterval)
+            if let rateLimitedUntil {
+                let remaining = rateLimitedUntil.timeIntervalSinceNow
+                if remaining > 0 { return remaining }
+            }
+            return nextRateLimitBackoff()
         }
 
         return Constants.Polling.failureInterval
+    }
+
+    private func nextRateLimitBackoff() -> TimeInterval {
+        let backoff = Constants.Polling.rateLimitBaseInterval * pow(2.0, Double(consecutiveFailures - 1))
+        return min(backoff, Constants.Polling.rateLimitMaxInterval)
     }
 
     func resync() async {

@@ -2,7 +2,7 @@ import Foundation
 
 enum UsageError: LocalizedError {
     case unauthorized
-    case rateLimited
+    case rateLimited(retryAfter: TimeInterval?)
     case networkError(Error)
     case invalidResponse(Int)
     case decodingError(Error)
@@ -21,6 +21,13 @@ enum UsageError: LocalizedError {
             return "Decoding error: \(error.localizedDescription)"
         }
     }
+
+    var retryAfterInterval: TimeInterval? {
+        if case .rateLimited(let retryAfter) = self {
+            return retryAfter
+        }
+        return nil
+    }
 }
 
 @MainActor
@@ -37,12 +44,12 @@ final class ClaudeUsageService: UsageServiceProtocol {
 
         do {
             return try await fetchWithToken(accessToken)
-        } catch UsageError.rateLimited, UsageError.unauthorized {
+        } catch UsageError.unauthorized {
             let reloadedToken = try await authService.reloadCredentials()
             if reloadedToken != accessToken {
                 return try await fetchWithToken(reloadedToken)
             }
-            throw UsageError.rateLimited
+            throw UsageError.unauthorized
         }
     }
 
@@ -65,7 +72,9 @@ final class ClaudeUsageService: UsageServiceProtocol {
         case 401:
             throw UsageError.unauthorized
         case 429:
-            throw UsageError.rateLimited
+            let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
+                .flatMap(TimeInterval.init)
+            throw UsageError.rateLimited(retryAfter: retryAfter)
         default:
             throw UsageError.invalidResponse(httpResponse.statusCode)
         }
