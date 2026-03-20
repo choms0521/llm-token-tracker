@@ -17,5 +17,8 @@ DerivedData/
 .gemini/
 .claude/
 
+# Local config
+Local.xcconfig
+
 # Profiling data
 *.profraw

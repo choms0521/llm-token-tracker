@@ -6,6 +6,10 @@ options:
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
 
+configFiles:
+  Debug: Local.xcconfig
+  Release: Local.xcconfig
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -28,7 +32,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         CODE_SIGNING_ALLOWED: "YES"
         CODE_SIGNING_REQUIRED: "YES"
-        DEVELOPMENT_TEAM: 4S3YDTDY9D
+        DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
         PRODUCT_NAME: "LLM Token Bar"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: "YES"
