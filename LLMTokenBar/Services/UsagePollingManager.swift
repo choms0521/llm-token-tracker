@@ -14,6 +14,13 @@ final class UsagePollingManager: ObservableObject {
     private var consecutiveFailures = 0
     private var lastError: Error?
     private var rateLimitedUntil: Date?
+    private var lastFetchTime: Date?
+    private var isFetching = false
+    private var lastUsageSnapshot: Double?
+    private var stableCount = 0
+
+    private let minimumFetchInterval: TimeInterval = 60  // 최소 60초 간격
+    private let stableThreshold = 3  // 3회 연속 동일하면 안정 상태
 
     init() {
         let authService = ClaudeAuthService()
@@ -45,7 +52,8 @@ final class UsagePollingManager: ObservableObject {
 
     func refresh() {
         if let rateLimitedUntil, Date() < rateLimitedUntil {
-            errorMessage = "Rate limit 해제 대기 중"
+            let minutes = Int(ceil(rateLimitedUntil.timeIntervalSinceNow / 60))
+            errorMessage = "Rate limit 해제 대기 중 (\(minutes)분 후)"
             return
         }
         Task {
@@ -54,6 +62,18 @@ final class UsagePollingManager: ObservableObject {
     }
 
     private func fetchAll() async {
+        // 중복 호출 방지
+        guard !isFetching else { return }
+
+        // 최소 간격 쓰로틀 (폴링 루프의 첫 호출은 예외)
+        if let lastFetchTime {
+            let elapsed = Date().timeIntervalSince(lastFetchTime)
+            if elapsed < minimumFetchInterval {
+                return
+            }
+        }
+
+        isFetching = true
         isLoading = true
         errorMessage = nil
 
@@ -65,18 +85,19 @@ final class UsagePollingManager: ObservableObject {
             consecutiveFailures = 0
             lastError = nil
             rateLimitedUntil = nil
+
+            // 적응형 폴링: 사용량 변화 추적
+            let currentUtilization = usage.sessionUsage?.utilization
+            if let current = currentUtilization, let last = lastUsageSnapshot,
+               abs(current - last) < 0.01 {
+                stableCount += 1
+            } else {
+                stableCount = 0
+            }
+            lastUsageSnapshot = currentUtilization
         } catch {
             consecutiveFailures += 1
             lastError = error
-            errorMessage = error.localizedDescription
-
-            if let usageError = error as? UsageError,
-               let retryAfter = usageError.retryAfterInterval {
-                rateLimitedUntil = Date().addingTimeInterval(retryAfter)
-            } else if case UsageError.rateLimited = error {
-                let backoff = nextRateLimitBackoff()
-                rateLimitedUntil = Date().addingTimeInterval(backoff)
-            }
 
             let isRateLimited: Bool
             if case UsageError.rateLimited = error {
@@ -84,17 +105,44 @@ final class UsagePollingManager: ObservableObject {
             } else {
                 isRateLimited = false
             }
-            if !isRateLimited && consecutiveFailures == 1 {
-                claudeUsage = .empty(for: .claude)
+
+            if isRateLimited {
+                if let usageError = error as? UsageError,
+                   let retryAfter = usageError.retryAfterInterval {
+                    rateLimitedUntil = Date().addingTimeInterval(retryAfter)
+                } else {
+                    let backoff = nextRateLimitBackoff()
+                    rateLimitedUntil = Date().addingTimeInterval(backoff)
+                }
+
+                // 캐시된 데이터가 있으면 에러 배너 대신 부드러운 메시지
+                let hasCache = claudeUsage.sessionUsage != nil || !claudeUsage.modelUsages.isEmpty
+                if hasCache {
+                    let minutes = Int(ceil((rateLimitedUntil?.timeIntervalSinceNow ?? 600) / 60))
+                    errorMessage = "Rate limit - \(minutes)분 후 자동 재시도"
+                } else {
+                    errorMessage = error.localizedDescription
+                }
+            } else {
+                errorMessage = error.localizedDescription
+                if consecutiveFailures == 1 {
+                    claudeUsage = .empty(for: .claude)
+                }
             }
         }
 
+        lastFetchTime = Date()
+        isFetching = false
         isLoading = false
     }
 
     private func nextPollInterval() -> TimeInterval {
         if consecutiveFailures == 0 {
-            return Constants.Polling.successInterval
+            // 적응형: 사용량 안정적이면 폴링 간격 늘리기
+            if stableCount >= stableThreshold {
+                return Constants.Polling.successInterval * 1.5  // 15분
+            }
+            return Constants.Polling.successInterval  // 10분
         }
 
         if let lastError, case UsageError.rateLimited = lastError {

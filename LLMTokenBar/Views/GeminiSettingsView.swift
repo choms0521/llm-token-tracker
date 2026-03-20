@@ -1,15 +1,15 @@
 import SwiftUI
 
-struct OpenAISettingsView: View {
-    private let parser = CodexSessionParser()
+struct GeminiSettingsView: View {
+    private let parser = GeminiSessionParser()
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Codex CLI")
+                Text("Gemini CLI")
                     .font(.title2.bold())
 
-                Text("Codex CLI 로컬 세션 데이터를 읽어 토큰 사용량을 표시합니다")
+                Text("Gemini CLI 로컬 세션 데이터를 읽어 토큰 사용량을 표시합니다")
                     .foregroundStyle(.secondary)
                     .font(.system(size: 12))
 
@@ -25,23 +25,23 @@ struct OpenAISettingsView: View {
     private var cliStatusBanner: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(parser.isCodexCLIInstalled ? .green : .red)
+                .fill(parser.isGeminiCLIInstalled ? .green : .red)
                 .frame(width: 8, height: 8)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(parser.isCodexCLIInstalled ? "Codex CLI 감지됨" : "Codex CLI 미설치")
+                Text(parser.isGeminiCLIInstalled ? "Gemini CLI 감지됨" : "Gemini CLI 미설치")
                     .font(.system(size: 13, weight: .medium))
 
-                Text(parser.isCodexCLIInstalled
-                     ? "~/.codex/ 디렉토리가 존재합니다"
-                     : "Codex CLI를 설치하고 로그인하세요")
+                Text(parser.isGeminiCLIInstalled
+                     ? "~/.gemini/ 디렉토리가 존재합니다"
+                     : "Gemini CLI를 설치하고 로그인하세요")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(parser.isCodexCLIInstalled ? .green.opacity(0.1) : .red.opacity(0.1))
+        .background(parser.isGeminiCLIInstalled ? .green.opacity(0.1) : .red.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
@@ -74,7 +74,7 @@ struct OpenAISettingsView: View {
             DetailRow(
                 icon: "folder",
                 label: "데이터 경로",
-                value: "~/.codex/sessions/"
+                value: "~/.gemini/tmp/"
             )
         }
         .padding(12)
@@ -92,8 +92,8 @@ struct OpenAISettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                BulletText("Codex CLI가 로컬에 저장하는 세션 로그를 파싱합니다")
-                BulletText("토큰 통계 탭에서 OpenAI 필터로 확인 가능합니다")
+                BulletText("Gemini CLI가 로컬에 저장하는 세션 로그를 파싱합니다")
+                BulletText("토큰 통계 탭에서 Gemini 필터로 확인 가능합니다")
                 BulletText("실시간 rate limit 조회는 지원되지 않습니다")
             }
             .padding(.leading, 4)
