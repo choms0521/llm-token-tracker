@@ -50,6 +50,13 @@ final class ClaudeUsageService: UsageServiceProtocol {
                 return try await fetchWithToken(reloadedToken)
             }
             throw UsageError.unauthorized
+        } catch UsageError.rateLimited {
+            // Rate limit 시 Keychain에서 최신 토큰 재로드 후 재시도
+            let reloadedToken = try await authService.reloadCredentials()
+            if reloadedToken != accessToken {
+                return try await fetchWithToken(reloadedToken)
+            }
+            throw UsageError.rateLimited(retryAfter: nil)
         }
     }
 
