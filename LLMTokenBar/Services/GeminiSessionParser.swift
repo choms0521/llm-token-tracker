@@ -149,7 +149,7 @@ final class GeminiSessionParser {
         guard let enumerator = fileManager.enumerator(atPath: basePath) else { return [] }
 
         while let relativePath = enumerator.nextObject() as? String {
-            if relativePath.hasSuffix(".json") && relativePath.contains("/chats/") {
+            if relativePath.hasSuffix(".json") && relativePath.contains("chats/") {
                 results.append("\(basePath)/\(relativePath)")
             }
         }
