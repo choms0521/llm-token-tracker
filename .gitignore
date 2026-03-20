@@ -12,5 +12,10 @@ DerivedData/
 # macOS
 .DS_Store
 
-# OMC
+# AI tool configurations
 .omc/
+.gemini/
+.claude/
+
+# Profiling data
+*.profraw

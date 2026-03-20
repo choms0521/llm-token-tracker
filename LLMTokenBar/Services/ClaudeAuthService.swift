@@ -57,8 +57,8 @@ final class ClaudeAuthService: AuthServiceProtocol {
         do {
             let oauth = try readCredentials()
 
-            let tokenPrefix = String(oauth.accessToken.prefix(14))
-            let maskedToken = "\(tokenPrefix)••••"
+            let tokenPrefix = String(oauth.accessToken.prefix(6))
+            let maskedToken = "\(tokenPrefix)••••••••"
 
             return SyncStatus(
                 provider: .claude,
@@ -74,7 +74,7 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
     }
 
-    // MARK: - Credential Reading (App Keychain → Claude Code Keychain → File fallback)
+    // MARK: - Credential Reading (App Keychain → File → Claude Code Keychain)
 
     private func readCredentials() throws -> ClaudeOAuth {
         // 1. Try app's own Keychain first (no permission prompt)
@@ -82,14 +82,14 @@ final class ClaudeAuthService: AuthServiceProtocol {
             return oauth
         }
 
-        // 2. Try Claude Code's Keychain (may prompt once)
-        if let oauth = readFromClaudeKeychain() {
+        // 2. Try file fallback (no permission prompt)
+        if let oauth = readFromFile() {
             cacheToAppKeychain(oauth)
             return oauth
         }
 
-        // 3. Fallback to file
-        if let oauth = readFromFile() {
+        // 3. Last resort: Claude Code's Keychain (may trigger macOS permission prompt)
+        if let oauth = readFromClaudeKeychain() {
             cacheToAppKeychain(oauth)
             return oauth
         }
