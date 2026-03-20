@@ -60,10 +60,16 @@ struct OpenAISettingsView: View {
             if let lastDate = parser.lastSessionDate {
                 DetailRow(
                     icon: "clock",
-                    label: "마지막 세션",
+                    label: "마지막 CLI 사용",
                     value: TimeFormatter.syncTimeString(from: lastDate)
                 )
             }
+
+            DetailRow(
+                icon: "arrow.triangle.2.circlepath",
+                label: "마지막 동기화",
+                value: TimeFormatter.syncTimeString(from: Date())
+            )
 
             DetailRow(
                 icon: "folder",
