@@ -9,19 +9,19 @@ final class TokenStatsService: ObservableObject {
     @Published var dailyTokens: [DailyTokenEntry] = []
     @Published var totalCost: Double = 0
 
-    private let statsPath: String
     private let fileManager: FileManager
+    private let claudeParser: ClaudeSessionParser
     private let geminiParser: GeminiSessionParser
     private let codexParser: CodexSessionParser
 
     init(
-        statsPath: String = "\(NSHomeDirectory())/.claude/stats-cache.json",
         fileManager: FileManager = .default,
+        claudeParser: ClaudeSessionParser = ClaudeSessionParser(),
         geminiParser: GeminiSessionParser = GeminiSessionParser(),
         codexParser: CodexSessionParser = CodexSessionParser()
     ) {
-        self.statsPath = statsPath
         self.fileManager = fileManager
+        self.claudeParser = claudeParser
         self.geminiParser = geminiParser
         self.codexParser = codexParser
     }
@@ -31,52 +31,10 @@ final class TokenStatsService: ObservableObject {
         dailyTokens = []
         totalCost = 0
 
-        guard fileManager.fileExists(atPath: statsPath) else { return }
-
-        let data: Data
-        do {
-            data = try Data(contentsOf: URL(fileURLWithPath: statsPath))
-        } catch {
-            logger.error("Stats 파일 읽기 실패 (\(self.statsPath)): \(error.localizedDescription)")
-            return
-        }
-
-        let stats: StatsCache
-        do {
-            stats = try JSONDecoder().decode(StatsCache.self, from: data)
-        } catch {
-            logger.error("Stats JSON 파싱 실패: \(error.localizedDescription)")
-            return
-        }
-
-        // Model summaries
-        if let modelUsage = stats.modelUsage {
-            modelSummaries = modelUsage
-                .map { ModelSummary.from(modelId: $0.key, usage: $0.value) }
-                .sorted { $0.totalTokens > $1.totalTokens }
-
-            totalCost = modelSummaries.reduce(0) { $0 + $1.costUSD }
-        }
-
-        // Daily tokens for chart
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-
-        if let daily = stats.dailyModelTokens {
-            var entries: [DailyTokenEntry] = []
-            for day in daily {
-                guard let date = dateFormatter.date(from: day.date) else { continue }
-                for (modelId, tokens) in day.tokensByModel {
-                    entries.append(DailyTokenEntry(
-                        id: "\(day.date)-\(modelId)",
-                        date: date,
-                        modelId: modelId,
-                        tokens: tokens
-                    ))
-                }
-            }
-            dailyTokens = entries.sorted { $0.date < $1.date }
-        }
+        // Claude: parse JSONL messages directly
+        let claudeData = claudeParser.parse()
+        dailyTokens.append(contentsOf: claudeData.dailyTokens)
+        modelSummaries.append(contentsOf: claudeData.modelSummaries)
 
         // Gemini local session data
         let geminiData = geminiParser.parse()
@@ -87,6 +45,8 @@ final class TokenStatsService: ObservableObject {
         dailyTokens.append(contentsOf: codexData.dailyTokens)
 
         dailyTokens.sort { $0.date < $1.date }
+        modelSummaries.sort { $0.totalTokens > $1.totalTokens }
+        totalCost = modelSummaries.reduce(0) { $0 + $1.costUSD }
     }
 
     var allModelIds: [String] {
