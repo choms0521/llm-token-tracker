@@ -6,8 +6,10 @@ xcuserdata/
 
 # Build
 .derived-data/
+.build-release/
 build/
 DerivedData/
+*.dmg
 
 # macOS
 .DS_Store
