@@ -19,29 +19,56 @@ final class TokenStatsServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testReloadParsesModelSummariesAndDailyTokens() throws {
-        let statsURL = temporaryDirectory.appendingPathComponent("stats-cache.json")
-        try makeSampleStatsJSON().data(using: .utf8)?.write(to: statsURL)
+    func testReloadParsesClaudeSessionData() throws {
+        let claudeDir = temporaryDirectory.appendingPathComponent("claude-projects", isDirectory: true)
+        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
+
+        let sessionFile = claudeDir.appendingPathComponent("test-session.jsonl")
+        try makeSampleClaudeJSONL().data(using: .utf8)?.write(to: sessionFile)
 
         let service = TokenStatsService(
-            statsPath: statsURL.path,
+            claudeParser: ClaudeSessionParser(basePath: claudeDir.path),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
             codexParser: CodexSessionParser(basePath: "/nonexistent")
         )
         service.reload()
 
-        XCTAssertEqual(service.modelSummaries.count, 2)
-        XCTAssertEqual(service.modelSummaries.first?.id, "claude-sonnet-4")
-        XCTAssertEqual(service.totalCost, 2.25, accuracy: 0.0001)
-        XCTAssertEqual(service.dailyTokens.count, 3)
-        XCTAssertEqual(service.recentModelUsages.first?.modelId, "claude-sonnet-4")
+        XCTAssertFalse(service.modelSummaries.isEmpty)
+        XCTAssertFalse(service.dailyTokens.isEmpty)
+
+        let opusSummary = service.modelSummaries.first { $0.id == "claude-opus-4-6" }
+        XCTAssertNotNil(opusSummary)
+        XCTAssertEqual(opusSummary?.inputTokens, 50)
+        XCTAssertEqual(opusSummary?.outputTokens, 100)
+        XCTAssertEqual(opusSummary?.cacheRead, 1000)
+        XCTAssertEqual(opusSummary?.cacheWrite, 200)
     }
 
     @MainActor
-    func testReloadClearsExistingStateWhenFileIsMissing() {
-        let statsURL = temporaryDirectory.appendingPathComponent("missing.json")
+    func testReloadDeduplicatesByMessageId() throws {
+        let claudeDir = temporaryDirectory.appendingPathComponent("claude-projects", isDirectory: true)
+        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
+
+        let sessionFile = claudeDir.appendingPathComponent("test-session.jsonl")
+        try makeDuplicateMessageJSONL().data(using: .utf8)?.write(to: sessionFile)
+
         let service = TokenStatsService(
-            statsPath: statsURL.path,
+            claudeParser: ClaudeSessionParser(basePath: claudeDir.path),
+            geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
+            codexParser: CodexSessionParser(basePath: "/nonexistent")
+        )
+        service.reload()
+
+        // Should use first entry's output (100), not second (500)
+        let summary = service.modelSummaries.first { $0.id == "claude-opus-4-6" }
+        XCTAssertNotNil(summary)
+        XCTAssertEqual(summary?.outputTokens, 100)
+    }
+
+    @MainActor
+    func testReloadClearsExistingStateWhenNoFiles() {
+        let service = TokenStatsService(
+            claudeParser: ClaudeSessionParser(basePath: "/nonexistent"),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
             codexParser: CodexSessionParser(basePath: "/nonexistent")
         )
@@ -69,48 +96,21 @@ final class TokenStatsServiceTests: XCTestCase {
         XCTAssertEqual(service.totalCost, 0)
     }
 
-    private func makeSampleStatsJSON() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
+    // MARK: - Test Data
 
-        let today = formatter.string(from: Date())
-        let yesterday = formatter.string(from: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date())
-
+    private func makeSampleClaudeJSONL() -> String {
+        let ts = ISO8601DateFormatter().string(from: Date())
         return """
-        {
-          "version": 1,
-          "dailyModelTokens": [
-            {
-              "date": "\(yesterday)",
-              "tokensByModel": {
-                "claude-sonnet-4": 1200,
-                "claude-opus-4-1": 800
-              }
-            },
-            {
-              "date": "\(today)",
-              "tokensByModel": {
-                "claude-sonnet-4": 1500
-              }
-            }
-          ],
-          "modelUsage": {
-            "claude-opus-4-1": {
-              "inputTokens": 100,
-              "outputTokens": 200,
-              "cacheReadInputTokens": 50,
-              "cacheCreationInputTokens": 25,
-              "costUSD": 0.75
-            },
-            "claude-sonnet-4": {
-              "inputTokens": 300,
-              "outputTokens": 400,
-              "cacheReadInputTokens": 150,
-              "cacheCreationInputTokens": 75,
-              "costUSD": 1.5
-            }
-          }
-        }
+        {"timestamp":"\(ts)","message":{"id":"msg_001","model":"claude-opus-4-6","role":"assistant","usage":{"input_tokens":50,"output_tokens":100,"cache_read_input_tokens":1000,"cache_creation_input_tokens":200}}}
+        {"timestamp":"\(ts)","message":{"id":"msg_002","model":"claude-sonnet-4-6","role":"assistant","usage":{"input_tokens":30,"output_tokens":60,"cache_read_input_tokens":500,"cache_creation_input_tokens":100}}}
+        """
+    }
+
+    private func makeDuplicateMessageJSONL() -> String {
+        let ts = ISO8601DateFormatter().string(from: Date())
+        return """
+        {"timestamp":"\(ts)","message":{"id":"msg_dup","model":"claude-opus-4-6","role":"assistant","usage":{"input_tokens":50,"output_tokens":100,"cache_read_input_tokens":1000,"cache_creation_input_tokens":200}}}
+        {"timestamp":"\(ts)","message":{"id":"msg_dup","model":"claude-opus-4-6","role":"assistant","usage":{"input_tokens":50,"output_tokens":500,"cache_read_input_tokens":1000,"cache_creation_input_tokens":200}}}
         """
     }
 }
