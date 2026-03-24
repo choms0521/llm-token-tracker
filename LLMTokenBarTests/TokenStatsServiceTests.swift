@@ -24,7 +24,7 @@ final class TokenStatsServiceTests: XCTestCase {
         try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
 
         let sessionFile = claudeDir.appendingPathComponent("test-session.jsonl")
-        try makeSampleClaudeJSONL().data(using: .utf8)?.write(to: sessionFile)
+        try makeSampleClaudeJSONL().data(using: .utf8)!.write(to: sessionFile)
 
         let service = TokenStatsService(
             claudeParser: ClaudeSessionParser(basePath: claudeDir.path),
@@ -50,7 +50,7 @@ final class TokenStatsServiceTests: XCTestCase {
         try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
 
         let sessionFile = claudeDir.appendingPathComponent("test-session.jsonl")
-        try makeDuplicateMessageJSONL().data(using: .utf8)?.write(to: sessionFile)
+        try makeDuplicateMessageJSONL().data(using: .utf8)!.write(to: sessionFile)
 
         let service = TokenStatsService(
             claudeParser: ClaudeSessionParser(basePath: claudeDir.path),

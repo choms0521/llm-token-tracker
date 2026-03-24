@@ -9,18 +9,15 @@ final class TokenStatsService: ObservableObject {
     @Published var dailyTokens: [DailyTokenEntry] = []
     @Published var totalCost: Double = 0
 
-    private let fileManager: FileManager
     private let claudeParser: ClaudeSessionParser
     private let geminiParser: GeminiSessionParser
     private let codexParser: CodexSessionParser
 
     init(
-        fileManager: FileManager = .default,
         claudeParser: ClaudeSessionParser = ClaudeSessionParser(),
         geminiParser: GeminiSessionParser = GeminiSessionParser(),
         codexParser: CodexSessionParser = CodexSessionParser()
     ) {
-        self.fileManager = fileManager
         self.claudeParser = claudeParser
         self.geminiParser = geminiParser
         self.codexParser = codexParser
@@ -39,10 +36,12 @@ final class TokenStatsService: ObservableObject {
         // Gemini local session data
         let geminiData = geminiParser.parse()
         dailyTokens.append(contentsOf: geminiData.dailyTokens)
+        modelSummaries.append(contentsOf: geminiData.modelSummaries)
 
         // Codex local session data
         let codexData = codexParser.parse()
         dailyTokens.append(contentsOf: codexData.dailyTokens)
+        modelSummaries.append(contentsOf: codexData.modelSummaries)
 
         dailyTokens.sort { $0.date < $1.date }
         modelSummaries.sort { $0.totalTokens > $1.totalTokens }

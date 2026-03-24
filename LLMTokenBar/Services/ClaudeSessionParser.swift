@@ -63,7 +63,8 @@ final class ClaudeSessionParser {
         var dailyMap: [String: [String: Int]] = [:]
         var modelTotals: [String: ClaudeModelAccumulator] = [:]
 
-        // Collect last usage per message ID (streaming writes multiple entries per message)
+        // Collect first usage per message ID (streaming writes multiple entries per message;
+        // the first entry has the actual API-reported usage, later entries inflate output with tool_use)
         var messageSnapshots: [String: MessageSnapshot] = [:]
 
         let dateFormatter = DateFormatter()
