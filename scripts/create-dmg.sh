@@ -6,6 +6,10 @@ BUNDLE_NAME="LLMTokenBar"
 DMG_NAME="${BUNDLE_NAME}"
 VOLUME_NAME="${APP_NAME}"
 
+# Release signing/notarization defaults (override via env when needed)
+DEVELOPER_ID_APP="${DEVELOPER_ID_APP:-Developer ID Application: minseok cho (9ADWM2H336)}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-notarytool}"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 DMG_OUTPUT="${PROJECT_DIR}/${DMG_NAME}.dmg"
@@ -29,7 +33,6 @@ else
             -arch arm64 \
             build
 
-        # Copy .app from DerivedData
         APP_PRODUCT=$(find "${BUILD_DIR}" -name "${BUNDLE_NAME}.app" -o -name "${APP_NAME}.app" | head -1)
         if [ -z "$APP_PRODUCT" ]; then
             echo "Error: .app not found in build output"
@@ -47,15 +50,23 @@ if [ ! -d "$APP_PATH" ]; then
     exit 1
 fi
 
-# Clean previous artifacts
+# Always re-sign app with Developer ID + hardened runtime for release
+/usr/bin/codesign --force --deep --options runtime --timestamp \
+  --sign "${DEVELOPER_ID_APP}" "$APP_PATH"
+/usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+# Clean previous artifact
 rm -f "${DMG_OUTPUT}"
 
-# Create staging directory with the .app
+# Create staging directory with fixed display name
 STAGING_DIR=$(mktemp -d)
+trap 'rm -rf "${STAGING_DIR}"' EXIT
 cp -R "$APP_PATH" "${STAGING_DIR}/${APP_NAME}.app"
 
-echo "Creating DMG from: ${APP_PATH}"
+echo "Creating installer-style DMG from: ${APP_PATH}"
 
+# Preferred: create-dmg (Finder-styled). If Finder AppleScript times out, fallback to appdmg.
+set +e
 create-dmg \
     --volname "${VOLUME_NAME}" \
     --volicon "${ICON_PATH}" \
@@ -65,11 +76,36 @@ create-dmg \
     --icon "${APP_NAME}.app" 180 200 \
     --hide-extension "${APP_NAME}.app" \
     --app-drop-link 480 200 \
+    --hdiutil-retries 10 \
     --no-internet-enable \
     "${DMG_OUTPUT}" \
     "${STAGING_DIR}"
+CREATE_DMG_RC=$?
+set -e
 
-rm -rf "${STAGING_DIR}"
+if [ $CREATE_DMG_RC -ne 0 ]; then
+  echo "create-dmg failed (likely Finder AppleScript timeout). Falling back to appdmg..."
+  TMP_SPEC="${STAGING_DIR}/appdmg.json"
+  cat > "$TMP_SPEC" <<JSON
+{
+  "title": "${VOLUME_NAME}",
+  "format": "UDZO",
+  "window": { "size": { "width": 660, "height": 400 } },
+  "icon-size": 128,
+  "contents": [
+    { "x": 180, "y": 200, "type": "file", "path": "${STAGING_DIR}/${APP_NAME}.app" },
+    { "x": 480, "y": 200, "type": "link", "path": "/Applications" }
+  ]
+}
+JSON
+  PATH="/usr/sbin:$PATH" npx -y appdmg "$TMP_SPEC" "${DMG_OUTPUT}"
+fi
+
+# Sign + notarize + staple DMG
+/usr/bin/codesign --force --timestamp --sign "${DEVELOPER_ID_APP}" "${DMG_OUTPUT}"
+xcrun notarytool submit "${DMG_OUTPUT}" --keychain-profile "${NOTARY_PROFILE}" --wait
+xcrun stapler staple "${DMG_OUTPUT}"
+xcrun stapler validate "${DMG_OUTPUT}"
 
 echo ""
-echo "DMG created: ${DMG_OUTPUT}"
+echo "DMG created (installer-style, signed+notarized): ${DMG_OUTPUT}"
