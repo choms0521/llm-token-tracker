@@ -83,12 +83,14 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
 
         // 2. Try file fallback (no permission prompt)
-        if let oauth = readFromFile() {
+        if let oauth = readFromFile(), !oauth.isExpired {
             cacheToAppKeychain(oauth)
             return oauth
         }
 
         // 3. Last resort: Claude Code's Keychain (may trigger macOS permission prompt)
+        // Only attempt if steps 1-2 both failed — minimizes permission popups
+        logger.info("앱 Keychain/파일에서 유효한 토큰을 찾지 못해 Claude Code Keychain에 접근합니다")
         if let oauth = readFromClaudeKeychain() {
             cacheToAppKeychain(oauth)
             return oauth
