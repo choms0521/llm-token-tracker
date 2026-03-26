@@ -38,7 +38,7 @@ final class KeychainService: Sendable {
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
 
-        // Try update first (atomic), fall back to add
+        // Prefer SecItemUpdate to minimize the delete+add window; fall back to add if item doesn't exist
         let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
 
         if updateStatus == errSecItemNotFound {

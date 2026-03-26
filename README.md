@@ -41,8 +41,8 @@ macOS 메뉴바에서 Claude, Codex, Gemini의 토큰 사용량을 실시간으�
 ### Authentication Flow
 
 1. **앱 자체 Keychain** 에서 캐싱된 토큰 조회 (프롬프트 없음)
-2. 없거나 만료 시 **Claude Code Keychain** (`Claude Code-credentials`)에서 읽기
-3. Fallback: `~/.claude/.credentials.json` 파일
+2. 없거나 만료 시 `~/.claude/.credentials.json` **파일**에서 읽기 (프롬프트 없음)
+3. Last resort: **Claude Code Keychain** (`Claude Code-credentials`)에서 읽기 (macOS 권한 팝업 가능)
 4. 읽은 토큰은 앱 자체 Keychain에 캐싱하여 이후 프롬프트 방지
 
 > 앱은 토큰을 refresh하지 않습니다. 토큰 만료 시 Claude Code CLI에서 다시 로그인해야 합니다.
