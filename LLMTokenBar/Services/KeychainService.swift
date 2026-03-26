@@ -33,14 +33,22 @@ final class KeychainService: Sendable {
             kSecAttrAccount as String: account,
         ]
 
-        SecItemDelete(query as CFDictionary)
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+        ]
 
-        var addQuery = query
-        addQuery[kSecValueData as String] = data
+        // Prefer SecItemUpdate to minimize the delete+add window; fall back to add if item doesn't exist
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
 
-        let status = SecItemAdd(addQuery as CFDictionary, nil)
-        guard status == errSecSuccess else {
-            throw KeychainError.saveFailed(status)
+        if updateStatus == errSecItemNotFound {
+            let addQuery = query.merging(attributes) { _, new in new }
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            guard addStatus == errSecSuccess else {
+                throw KeychainError.saveFailed(addStatus)
+            }
+        } else if updateStatus != errSecSuccess {
+            throw KeychainError.saveFailed(updateStatus)
         }
     }
 
