@@ -29,12 +29,20 @@ final class TokenStatsService: ObservableObject {
         currentReloadTask?.cancel()
         isLoading = true
 
+        let startTime = ContinuousClock.now
+
         currentReloadTask = Task.detached(priority: .utility) { [claudeParser, geminiParser, codexParser] in
             let result = await Self.parseInBackground(
                 claude: claudeParser,
                 gemini: geminiParser,
                 codex: codexParser
             )
+
+            // 최소 1초간 로딩 표시하여 UI 피드백 보장
+            let elapsed = ContinuousClock.now - startTime
+            if elapsed < .seconds(1) {
+                try? await Task.sleep(for: .seconds(1) - elapsed)
+            }
 
             await MainActor.run { [weak self] in
                 guard let self, !Task.isCancelled else { return }
