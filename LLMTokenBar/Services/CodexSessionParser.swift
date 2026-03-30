@@ -89,7 +89,7 @@ private struct CodexTokenUsage: Decodable {
 
 // MARK: - Parser
 
-final class CodexSessionParser {
+final class CodexSessionParser: @unchecked Sendable {
     private let basePath: String
     private let fileManager: FileManager
 

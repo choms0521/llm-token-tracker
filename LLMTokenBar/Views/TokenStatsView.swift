@@ -111,7 +111,29 @@ struct TokenStatsView: View {
             }
             .padding(24)
         }
+        .overlay {
+            if service.isLoading {
+                loadingOverlay
+            }
+        }
         .onAppear { service.reload() }
+    }
+
+    // MARK: - Loading Overlay
+
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.15)
+            VStack(spacing: 12) {
+                ProgressView()
+                    .controlSize(.large)
+                Text("통계 데이터 로딩 중...")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(24)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
     }
 
     // MARK: - Header

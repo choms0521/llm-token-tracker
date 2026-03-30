@@ -8,6 +8,7 @@ final class TokenStatsService: ObservableObject {
     @Published var modelSummaries: [ModelSummary] = []
     @Published var dailyTokens: [DailyTokenEntry] = []
     @Published var totalCost: Double = 0
+    @Published var isLoading: Bool = false
 
     private let claudeParser: ClaudeSessionParser
     private let geminiParser: GeminiSessionParser
@@ -24,28 +25,44 @@ final class TokenStatsService: ObservableObject {
     }
 
     func reload() {
-        modelSummaries = []
-        dailyTokens = []
-        totalCost = 0
+        isLoading = true
 
-        // Claude: parse JSONL messages directly
-        let claudeData = claudeParser.parse()
-        dailyTokens.append(contentsOf: claudeData.dailyTokens)
-        modelSummaries.append(contentsOf: claudeData.modelSummaries)
+        Task {
+            let result = await Self.parseInBackground(
+                claude: claudeParser,
+                gemini: geminiParser,
+                codex: codexParser
+            )
+            dailyTokens = result.tokens
+            modelSummaries = result.summaries
+            totalCost = result.cost
+            isLoading = false
+        }
+    }
 
-        // Gemini local session data
-        let geminiData = geminiParser.parse()
-        dailyTokens.append(contentsOf: geminiData.dailyTokens)
-        modelSummaries.append(contentsOf: geminiData.modelSummaries)
+    private static nonisolated func parseInBackground(
+        claude: ClaudeSessionParser,
+        gemini: GeminiSessionParser,
+        codex: CodexSessionParser
+    ) async -> (tokens: [DailyTokenEntry], summaries: [ModelSummary], cost: Double) {
+        let claudeData = claude.parse()
+        let geminiData = gemini.parse()
+        let codexData = codex.parse()
 
-        // Codex local session data
-        let codexData = codexParser.parse()
-        dailyTokens.append(contentsOf: codexData.dailyTokens)
-        modelSummaries.append(contentsOf: codexData.modelSummaries)
+        var tokens: [DailyTokenEntry] = []
+        tokens.append(contentsOf: claudeData.dailyTokens)
+        tokens.append(contentsOf: geminiData.dailyTokens)
+        tokens.append(contentsOf: codexData.dailyTokens)
+        tokens.sort { $0.date < $1.date }
 
-        dailyTokens.sort { $0.date < $1.date }
-        modelSummaries.sort { $0.totalTokens > $1.totalTokens }
-        totalCost = modelSummaries.reduce(0) { $0 + $1.costUSD }
+        var summaries: [ModelSummary] = []
+        summaries.append(contentsOf: claudeData.modelSummaries)
+        summaries.append(contentsOf: geminiData.modelSummaries)
+        summaries.append(contentsOf: codexData.modelSummaries)
+        summaries.sort { $0.totalTokens > $1.totalTokens }
+
+        let cost = summaries.reduce(0) { $0 + $1.costUSD }
+        return (tokens, summaries, cost)
     }
 
     var allModelIds: [String] {

@@ -34,7 +34,7 @@ private struct ClaudeTokenUsage: Decodable {
 
 // MARK: - Parser
 
-final class ClaudeSessionParser {
+final class ClaudeSessionParser: @unchecked Sendable {
     private let basePath: String
     private let fileManager: FileManager
 

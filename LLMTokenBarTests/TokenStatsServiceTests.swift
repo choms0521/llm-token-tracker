@@ -19,7 +19,7 @@ final class TokenStatsServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testReloadParsesClaudeSessionData() throws {
+    func testReloadParsesClaudeSessionData() async throws {
         let claudeDir = temporaryDirectory.appendingPathComponent("claude-projects", isDirectory: true)
         try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
 
@@ -33,6 +33,9 @@ final class TokenStatsServiceTests: XCTestCase {
         )
         service.reload()
 
+        // Wait for async Task to complete
+        try await Task.sleep(for: .milliseconds(500))
+
         XCTAssertFalse(service.modelSummaries.isEmpty)
         XCTAssertFalse(service.dailyTokens.isEmpty)
 
@@ -45,7 +48,7 @@ final class TokenStatsServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testReloadDeduplicatesByMessageId() throws {
+    func testReloadDeduplicatesByMessageId() async throws {
         let claudeDir = temporaryDirectory.appendingPathComponent("claude-projects", isDirectory: true)
         try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
 
@@ -59,6 +62,8 @@ final class TokenStatsServiceTests: XCTestCase {
         )
         service.reload()
 
+        try await Task.sleep(for: .milliseconds(500))
+
         // Should use first entry's output (100), not second (500)
         let summary = service.modelSummaries.first { $0.id == "claude-opus-4-6" }
         XCTAssertNotNil(summary)
@@ -66,7 +71,7 @@ final class TokenStatsServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testReloadClearsExistingStateWhenNoFiles() {
+    func testReloadClearsExistingStateWhenNoFiles() async throws {
         let service = TokenStatsService(
             claudeParser: ClaudeSessionParser(basePath: "/nonexistent"),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
@@ -90,6 +95,8 @@ final class TokenStatsServiceTests: XCTestCase {
         service.totalCost = 99
 
         service.reload()
+
+        try await Task.sleep(for: .milliseconds(500))
 
         XCTAssertTrue(service.modelSummaries.isEmpty)
         XCTAssertTrue(service.dailyTokens.isEmpty)
