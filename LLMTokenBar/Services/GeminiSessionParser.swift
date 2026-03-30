@@ -28,7 +28,7 @@ struct GeminiDailyTokens {
     let tokensByModel: [String: Int]
 }
 
-final class GeminiSessionParser {
+final class GeminiSessionParser: @unchecked Sendable {
     private let basePath: String
     private let fileManager: FileManager
 

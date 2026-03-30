@@ -46,10 +46,7 @@ final class ClaudeAuthService: AuthServiceProtocol {
 
     func reloadCredentials() async throws -> String {
         cachedOAuth = nil
-        try? KeychainService.shared.delete(
-            service: Constants.Keychain.serviceName,
-            account: Constants.Keychain.claudeAccount
-        )
+        clearFileCache()
         return try await loadCredentials()
     }
 
@@ -74,41 +71,63 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
     }
 
-    // MARK: - Credential Reading (App Keychain → File → Claude Code Keychain)
+    // MARK: - Credential Reading (File Cache → CLI File → Claude Code Keychain)
 
     private func readCredentials() throws -> ClaudeOAuth {
-        // 1. Try app's own Keychain first (no permission prompt)
-        if let oauth = readFromAppKeychain(), !oauth.isExpired {
+        // 1. Try app's file cache first (no permission prompt, survives re-signing)
+        if let oauth = readFromFileCache(), !oauth.isExpired {
             return oauth
         }
 
-        // 2. Try file fallback (no permission prompt)
-        if let oauth = readFromFile(), !oauth.isExpired {
-            cacheToAppKeychain(oauth)
+        // 2. Try CLI credentials file (no permission prompt)
+        if let oauth = readFromCLIFile(), !oauth.isExpired {
+            saveToFileCache(oauth)
             return oauth
         }
 
         // 3. Last resort: Claude Code's Keychain (may trigger macOS permission prompt)
-        // Only attempt if steps 1-2 both failed — minimizes permission popups
-        logger.info("앱 Keychain/파일에서 유효한 토큰을 찾지 못해 Claude Code Keychain에 접근합니다")
+        logger.info("파일 캐시/CLI 파일에서 유효한 토큰을 찾지 못해 Claude Code Keychain에 접근합니다")
         if let oauth = readFromClaudeKeychain(), !oauth.isExpired {
-            cacheToAppKeychain(oauth)
+            saveToFileCache(oauth)
             return oauth
         }
 
         throw AuthError.credentialsNotFound
     }
 
-    private func readFromAppKeychain() -> ClaudeOAuth? {
+    private var fileCachePath: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = appSupport.appendingPathComponent("LLMTokenBar", isDirectory: true)
+        return dir.appendingPathComponent("claude-oauth-cache.json")
+    }
+
+    private func readFromFileCache() -> ClaudeOAuth? {
+        let path = fileCachePath
+        guard FileManager.default.fileExists(atPath: path.path) else { return nil }
         do {
-            let data = try KeychainService.shared.load(
-                service: Constants.Keychain.serviceName,
-                account: Constants.Keychain.claudeAccount
-            )
+            let data = try Data(contentsOf: path)
             return parseCredentialData(data)
         } catch {
+            logger.debug("파일 캐시 읽기 실패: \(error.localizedDescription)")
             return nil
         }
+    }
+
+    private func saveToFileCache(_ oauth: ClaudeOAuth) {
+        let path = fileCachePath
+        do {
+            let dir = path.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(oauth)
+            try data.write(to: path, options: [.atomic])
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path.path)
+        } catch {
+            logger.warning("파일 캐시 저장 실패: \(error.localizedDescription)")
+        }
+    }
+
+    private func clearFileCache() {
+        try? FileManager.default.removeItem(at: fileCachePath)
     }
 
     private func readFromClaudeKeychain() -> ClaudeOAuth? {
@@ -132,15 +151,7 @@ final class ClaudeAuthService: AuthServiceProtocol {
         return parseCredentialData(data)
     }
 
-    private func cacheToAppKeychain(_ oauth: ClaudeOAuth) {
-        do {
-            try KeychainService.shared.save(oauth, service: Constants.Keychain.serviceName, account: Constants.Keychain.claudeAccount)
-        } catch {
-            logger.warning("앱 Keychain 캐싱 실패: \(error.localizedDescription)")
-        }
-    }
-
-    private func readFromFile() -> ClaudeOAuth? {
+    private func readFromCLIFile() -> ClaudeOAuth? {
         let path = Constants.Claude.credentialsPath
         guard FileManager.default.fileExists(atPath: path) else {
             return nil
