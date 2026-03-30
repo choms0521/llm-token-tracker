@@ -31,6 +31,7 @@ final class KeychainService: Sendable {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+
         ]
 
         let attributes: [String: Any] = [
@@ -62,6 +63,7 @@ final class KeychainService: Sendable {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -86,6 +88,7 @@ final class KeychainService: Sendable {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+
         ]
 
         let status = SecItemDelete(query as CFDictionary)
