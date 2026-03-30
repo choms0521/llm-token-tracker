@@ -33,8 +33,14 @@ final class TokenStatsServiceTests: XCTestCase {
         )
         service.reload()
 
-        // Wait for async Task to complete
-        try await Task.sleep(for: .milliseconds(500))
+        let loaded = expectation(description: "Token stats reloaded")
+        Task { @MainActor in
+            while service.isLoading {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            loaded.fulfill()
+        }
+        await fulfillment(of: [loaded], timeout: 5.0)
 
         XCTAssertFalse(service.modelSummaries.isEmpty)
         XCTAssertFalse(service.dailyTokens.isEmpty)
@@ -62,7 +68,14 @@ final class TokenStatsServiceTests: XCTestCase {
         )
         service.reload()
 
-        try await Task.sleep(for: .milliseconds(500))
+        let loaded = expectation(description: "Dedup reload completed")
+        Task { @MainActor in
+            while service.isLoading {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            loaded.fulfill()
+        }
+        await fulfillment(of: [loaded], timeout: 5.0)
 
         // Should use first entry's output (100), not second (500)
         let summary = service.modelSummaries.first { $0.id == "claude-opus-4-6" }
@@ -96,7 +109,14 @@ final class TokenStatsServiceTests: XCTestCase {
 
         service.reload()
 
-        try await Task.sleep(for: .milliseconds(500))
+        let loaded = expectation(description: "Clear state reload completed")
+        Task { @MainActor in
+            while service.isLoading {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            loaded.fulfill()
+        }
+        await fulfillment(of: [loaded], timeout: 5.0)
 
         XCTAssertTrue(service.modelSummaries.isEmpty)
         XCTAssertTrue(service.dailyTokens.isEmpty)

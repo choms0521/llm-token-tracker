@@ -13,6 +13,7 @@ final class TokenStatsService: ObservableObject {
     private let claudeParser: ClaudeSessionParser
     private let geminiParser: GeminiSessionParser
     private let codexParser: CodexSessionParser
+    private var currentReloadTask: Task<Void, Never>?
 
     init(
         claudeParser: ClaudeSessionParser = ClaudeSessionParser(),
@@ -25,18 +26,23 @@ final class TokenStatsService: ObservableObject {
     }
 
     func reload() {
+        currentReloadTask?.cancel()
         isLoading = true
 
-        Task {
+        currentReloadTask = Task.detached(priority: .utility) { [claudeParser, geminiParser, codexParser] in
             let result = await Self.parseInBackground(
                 claude: claudeParser,
                 gemini: geminiParser,
                 codex: codexParser
             )
-            dailyTokens = result.tokens
-            modelSummaries = result.summaries
-            totalCost = result.cost
-            isLoading = false
+
+            await MainActor.run { [weak self] in
+                guard let self, !Task.isCancelled else { return }
+                self.dailyTokens = result.tokens
+                self.modelSummaries = result.summaries
+                self.totalCost = result.cost
+                self.isLoading = false
+            }
         }
     }
 
