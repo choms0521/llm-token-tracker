@@ -119,7 +119,8 @@ final class ClaudeAuthService: AuthServiceProtocol {
             let dir = path.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(oauth)
-            try data.write(to: path, options: [.atomic, .completeFileProtection])
+            try data.write(to: path, options: [.atomic])
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path.path)
         } catch {
             logger.warning("파일 캐시 저장 실패: \(error.localizedDescription)")
         }
