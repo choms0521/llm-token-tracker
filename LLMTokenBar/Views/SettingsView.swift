@@ -454,8 +454,8 @@ struct GeneralSettingsView: View {
             }
 
             Section("정보") {
-                LabeledContent("버전", value: "1.0.0")
-                LabeledContent("빌드", value: "1")
+                LabeledContent("버전", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–")
+                LabeledContent("빌드", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–")
             }
         }
         .formStyle(.grouped)

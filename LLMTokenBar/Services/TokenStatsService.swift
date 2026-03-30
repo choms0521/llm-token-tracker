@@ -40,8 +40,8 @@ final class TokenStatsService: ObservableObject {
 
             // 최소 1초간 로딩 표시하여 UI 피드백 보장
             let elapsed = ContinuousClock.now - startTime
-            if elapsed < .seconds(1) {
-                try? await Task.sleep(for: .seconds(1) - elapsed)
+            if elapsed < .milliseconds(500) {
+                try? await Task.sleep(for: .milliseconds(500) - elapsed)
             }
 
             await MainActor.run { [weak self] in
