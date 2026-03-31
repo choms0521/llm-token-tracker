@@ -106,6 +106,7 @@ struct TokenStatsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 headerView
                 providerSelector
+                todayUsageView
                 tokenChart
                 modelBreakdown
             }
@@ -154,6 +155,69 @@ struct TokenStatsView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    // MARK: - Today Usage
+
+    private var todayEntries: [DailyTokenEntry] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return service.dailyTokens.filter { entry in
+            cal.isDate(entry.date, inSameDayAs: today) && matchesProvider(entry.modelId)
+        }
+    }
+
+    private var todayTokensByModel: [(modelId: String, tokens: Int)] {
+        var map: [String: Int] = [:]
+        for entry in todayEntries {
+            map[entry.modelId, default: 0] += entry.tokens
+        }
+        return map.map { (modelId: $0.key, tokens: $0.value) }.sorted { $0.tokens > $1.tokens }
+    }
+
+    private var todayTotalTokens: Int {
+        todayTokensByModel.reduce(0) { $0 + $1.tokens }
+    }
+
+    private var todayUsageView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "clock.fill")
+                    .foregroundStyle(.orange)
+                    .font(.system(size: 12))
+                Text("오늘 사용량")
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+                Text(formatTokenCount(todayTotalTokens))
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.orange)
+            }
+
+            if todayTokensByModel.isEmpty {
+                Text("오늘 사용 기록 없음")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            } else {
+                ForEach(todayTokensByModel, id: \.modelId) { item in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Self.colorForModelId(item.modelId))
+                            .frame(width: 8, height: 8)
+                        Text(item.modelId)
+                            .font(.system(size: 11, weight: .medium))
+                        Spacer()
+                        Text(formatTokenCount(item.tokens))
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(.quaternary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Provider Selector

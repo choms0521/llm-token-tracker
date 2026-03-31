@@ -21,6 +21,7 @@ DerivedData/
 
 # Local config
 Local.xcconfig
+Generated.xcconfig
 
 # Profiling data
 *.profraw
