@@ -102,8 +102,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let value {
             statusBarController?.updateStatusText("\(Int(value))%")
+            statusBarController?.updateUtilization(value)
         } else {
             statusBarController?.updateStatusText("")
+            statusBarController?.updateUtilization(0)
         }
     }
 }

@@ -60,7 +60,7 @@ final class ClaudeSessionParser: @unchecked Sendable {
 
     func parse() -> (dailyTokens: [DailyTokenEntry], modelSummaries: [ModelSummary]) {
         let files = findSessionFiles()
-        var dailyMap: [String: [String: Int]] = [:]
+        var dailyMap: [String: [String: (withCache: Int, noCache: Int)]] = [:]
         var modelTotals: [String: ClaudeModelAccumulator] = [:]
 
         // Collect first usage per message ID (streaming writes multiple entries per message;
@@ -103,9 +103,7 @@ final class ClaudeSessionParser: @unchecked Sendable {
 
                 guard input + output + cacheRead + cacheWrite > 0 else { continue }
 
-                // Keep first entry only: it has the actual API-reported usage
-                // Later entries accumulate tool_use outputs and inflate the count
-                guard messageSnapshots[messageId] == nil else { continue }
+                // Keep last entry: it has the final cumulative usage for the message
                 messageSnapshots[messageId] = MessageSnapshot(
                     model: model,
                     timestamp: timestamp,
@@ -128,8 +126,12 @@ final class ClaudeSessionParser: @unchecked Sendable {
                 continue
             }
 
-            let effectiveTokens = snapshot.input + snapshot.output
-            dailyMap[dateKey, default: [:]][snapshot.model, default: 0] += effectiveTokens
+            let tokensWithCache = snapshot.input + snapshot.output + snapshot.cacheRead
+            let tokensNoCache = snapshot.input + snapshot.output
+            var entry = dailyMap[dateKey, default: [:]][snapshot.model, default: (0, 0)]
+            entry.withCache += tokensWithCache
+            entry.noCache += tokensNoCache
+            dailyMap[dateKey, default: [:]][snapshot.model] = entry
 
             var acc = modelTotals[snapshot.model] ?? ClaudeModelAccumulator()
             acc.inputTokens += snapshot.input
@@ -141,12 +143,13 @@ final class ClaudeSessionParser: @unchecked Sendable {
 
         let dailyTokens: [DailyTokenEntry] = dailyMap.flatMap { (dateStr, models) -> [DailyTokenEntry] in
             guard let date = dateFormatter.date(from: dateStr) else { return [] }
-            return models.map { (modelId, tokens) in
+            return models.map { (modelId, pair) in
                 DailyTokenEntry(
                     id: "\(dateStr)-\(modelId)",
                     date: date,
                     modelId: modelId,
-                    tokens: tokens
+                    tokens: pair.withCache,
+                    tokensNoCache: pair.noCache
                 )
             }
         }.sorted { $0.date < $1.date }

@@ -115,7 +115,7 @@ final class CodexSessionParser: @unchecked Sendable {
 
     func parse() -> (dailyTokens: [DailyTokenEntry], modelSummaries: [ModelSummary]) {
         let files = findSessionFiles()
-        var dailyMap: [String: [String: Int]] = [:]
+        var dailyMap: [String: [String: (withCache: Int, noCache: Int)]] = [:]
         var modelTotals: [String: CodexModelAccumulator] = [:]
         var seenSessions: Set<String> = []
 
@@ -188,9 +188,9 @@ final class CodexSessionParser: @unchecked Sendable {
             let input = usage.inputTokens ?? 0
             let output = usage.outputTokens ?? 0
             let cached = usage.cachedInputTokens ?? 0
-            let newInput = input - cached
-            let effectiveTokens = newInput + output
-            guard effectiveTokens > 0 else { continue }
+            let tokensWithCache = input + output
+            let tokensNoCache = (input - cached) + output
+            guard tokensWithCache > 0 else { continue }
 
             let dateKey: String
             if let date = isoFormatter.date(from: timestamp) {
@@ -201,10 +201,13 @@ final class CodexSessionParser: @unchecked Sendable {
                 continue
             }
 
-            dailyMap[dateKey, default: [:]][currentModel, default: 0] += effectiveTokens
+            var entry = dailyMap[dateKey, default: [:]][currentModel, default: (0, 0)]
+            entry.withCache += tokensWithCache
+            entry.noCache += max(0, tokensNoCache)
+            dailyMap[dateKey, default: [:]][currentModel] = entry
 
             var acc = modelTotals[currentModel] ?? CodexModelAccumulator()
-            acc.inputTokens += newInput
+            acc.inputTokens += input
             acc.outputTokens += output
             acc.cachedTokens += cached
             acc.reasoningTokens += usage.reasoningOutputTokens ?? 0
@@ -213,12 +216,13 @@ final class CodexSessionParser: @unchecked Sendable {
 
         let dailyTokens: [DailyTokenEntry] = dailyMap.flatMap { (dateStr, models) -> [DailyTokenEntry] in
             guard let date = dateFormatter.date(from: dateStr) else { return [] }
-            return models.map { (modelId, tokens) in
+            return models.map { (modelId, pair) in
                 DailyTokenEntry(
                     id: "\(dateStr)-\(modelId)",
                     date: date,
                     modelId: modelId,
-                    tokens: tokens
+                    tokens: pair.withCache,
+                    tokensNoCache: pair.noCache
                 )
             }
         }.sorted { $0.date < $1.date }

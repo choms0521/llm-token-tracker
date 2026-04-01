@@ -103,8 +103,8 @@ final class ClaudeUsageService: UsageServiceProtocol {
 
         let sessionUsage = response.fiveHour.map { bucket in
             UsageEntry(
-                label: "세션 사용량",
-                sublabel: "5시간 롤링 윈도우",
+                label: String(localized: "Session Usage"),
+                sublabel: String(localized: "5-hour rolling window"),
                 utilization: bucket.utilization,
                 resetsAt: bucket.resetsAtDate
             )
@@ -112,8 +112,8 @@ final class ClaudeUsageService: UsageServiceProtocol {
 
         let weeklyUsage = response.sevenDay.map { bucket in
             UsageEntry(
-                label: "모든 모델",
-                sublabel: "주간",
+                label: String(localized: "All Models"),
+                sublabel: String(localized: "Weekly"),
                 utilization: bucket.utilization,
                 resetsAt: bucket.resetsAtDate
             )

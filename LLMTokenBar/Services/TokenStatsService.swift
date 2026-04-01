@@ -84,12 +84,16 @@ final class TokenStatsService: ObservableObject {
     }
 
     var recentModelUsages: [RecentModelUsage] {
+        recentModelUsages(includeCache: UserDefaults.standard.bool(forKey: "includeCacheTokens"))
+    }
+
+    func recentModelUsages(includeCache: Bool) -> [RecentModelUsage] {
         let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
         let recentTokens = dailyTokens.filter { $0.date >= sevenDaysAgo }
 
         var tokensByModel: [String: Int] = [:]
         for entry in recentTokens {
-            tokensByModel[entry.modelId, default: 0] += entry.tokens
+            tokensByModel[entry.modelId, default: 0] += entry.effectiveTokens(includeCache: includeCache)
         }
 
         return tokensByModel

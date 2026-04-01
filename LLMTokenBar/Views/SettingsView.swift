@@ -2,14 +2,25 @@ import SwiftUI
 import ServiceManagement
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case claude = "Claude"
-    case gemini = "Gemini"
-    case openai = "OpenAI"
-    case history = "기록"
-    case tokens = "토큰 통계"
-    case general = "일반"
+    case claude
+    case gemini
+    case openai
+    case history
+    case tokens
+    case general
 
     var id: String { rawValue }
+
+    var localizedName: LocalizedStringKey {
+        switch self {
+        case .claude: return "Claude"
+        case .gemini: return "Gemini"
+        case .openai: return "OpenAI"
+        case .history: return "History"
+        case .tokens: return "Token Stats"
+        case .general: return "General"
+        }
+    }
 
     var iconName: String {
         switch self {
@@ -42,19 +53,19 @@ struct SettingsView: View {
 
     private var sidebar: some View {
         List(selection: $selectedTab) {
-            Section("인증 정보") {
+            Section("Credentials") {
                 ForEach([SettingsTab.claude, .gemini, .openai], id: \.self) { tab in
-                    Label(tab.rawValue, systemImage: tab.iconName)
+                    Label(tab.localizedName, systemImage: tab.iconName)
                         .tag(tab)
                 }
             }
 
-            Section("설정") {
-                Label("기록", systemImage: "chart.line.uptrend.xyaxis")
+            Section("Settings") {
+                Label("History", systemImage: "chart.line.uptrend.xyaxis")
                     .tag(SettingsTab.history)
-                Label("토큰 통계", systemImage: "number.square")
+                Label("Token Stats", systemImage: "number.square")
                     .tag(SettingsTab.tokens)
-                Label("일반", systemImage: "gearshape")
+                Label("General", systemImage: "gearshape")
                     .tag(SettingsTab.general)
             }
         }
@@ -62,7 +73,7 @@ struct SettingsView: View {
         .frame(minWidth: 160)
         .safeAreaInset(edge: .bottom) {
             Button(action: { NSApp.terminate(nil) }) {
-                Label("앱 종료", systemImage: "power")
+                Label("Quit App", systemImage: "power")
                     .font(.system(size: 12))
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,10 +120,10 @@ struct CLISyncDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("CLI 계정")
+                Text("CLI Account")
                     .font(.title2.bold())
 
-                Text("로그인된 \(provider.displayName) CLI 계정 동기화")
+                Text("Sync logged-in \(provider.displayName) CLI account")
                     .foregroundStyle(.secondary)
 
                 syncStatusBanner
@@ -133,11 +144,11 @@ struct CLISyncDetailView: View {
 
     private var disconnectedDetailsView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("계정 세부정보")
+            Text("Account Details")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
 
-            Text("아직 동기화된 자격 증명 없음")
+            Text("No synced credentials yet")
                 .font(.system(size: 13))
                 .foregroundStyle(.primary)
         }
@@ -155,11 +166,11 @@ struct CLISyncDetailView: View {
                     .font(.system(size: 12))
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Claude Code CLI에 로그인되어 있어야 합니다")
+                    Text("Must be logged in to Claude Code CLI")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
 
-                    Text("터미널에서 'claude' 명령으로 로그인 후 아래 버튼을 클릭하세요")
+                    Text("Log in with 'claude' command in terminal, then click below")
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                 }
@@ -181,7 +192,7 @@ struct CLISyncDetailView: View {
                     } else {
                         Image(systemName: "arrow.triangle.2.circlepath")
                     }
-                    Text("Keychain에서 동기화")
+                    Text("Sync from Keychain")
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -200,7 +211,7 @@ struct CLISyncDetailView: View {
                 .frame(width: 8, height: 8)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(syncStatus.isConnected ? "CLI 계정 동기화됨" : "연결 안됨")
+                Text(syncStatus.isConnected ? "CLI Account Synced" : "Not Connected")
                     .font(.system(size: 13, weight: .medium))
 
                 if let lastSync = syncStatus.lastSyncedAt {
@@ -218,20 +229,20 @@ struct CLISyncDetailView: View {
 
     private var accountDetailsView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("계정 세부정보")
+            Text("Account Details")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
 
-            Text("동기화된 CLI 자격 증명")
+            Text("Synced CLI Credentials")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
 
             if let token = syncStatus.maskedToken {
-                DetailRow(icon: "key", label: "액세스 토큰", value: token)
+                DetailRow(icon: "key", label: String(localized: "Access Token"), value: token)
             }
 
             if let sub = syncStatus.subscription {
-                DetailRow(icon: "person.crop.circle", label: "구독", value: sub)
+                DetailRow(icon: "person.crop.circle", label: String(localized: "Subscription"), value: sub)
             }
 
             if let tier = syncStatus.rateLimitTier {
@@ -241,7 +252,7 @@ struct CLISyncDetailView: View {
             if !syncStatus.scopes.isEmpty {
                 DetailRow(
                     icon: "checkmark.shield",
-                    label: "범위",
+                    label: String(localized: "Scopes"),
                     value: syncStatus.scopes.joined(separator: ", ")
                 )
             }
@@ -256,14 +267,14 @@ struct CLISyncDetailView: View {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(.blue)
-                Text("CLI 계정 동기화 정보")
+                Text("CLI Account Sync Info")
                     .font(.system(size: 12, weight: .medium))
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                BulletText("프로필로 CLI 로그인 자동 전환")
-                BulletText("CLI 및 앱 계정 동기화 유지")
-                BulletText("프로필 전환 시 자격 증명 자동 새로 고침")
+                BulletText("Auto-switch CLI login by profile")
+                BulletText("Keep CLI and app accounts in sync")
+                BulletText("Auto-refresh credentials on profile switch")
             }
             .padding(.leading, 4)
         }
@@ -275,13 +286,13 @@ struct CLISyncDetailView: View {
     private var actionButtons: some View {
         HStack(spacing: 12) {
             Button(action: onResync) {
-                Label("다시 동기화", systemImage: "arrow.clockwise")
+                Label("Resync", systemImage: "arrow.clockwise")
             }
             .buttonStyle(.borderedProminent)
             .tint(.orange)
 
             Button(action: onDisconnect) {
-                Label("제거", systemImage: "trash")
+                Label("Remove", systemImage: "trash")
             }
             .buttonStyle(.bordered)
             .tint(.red)
@@ -314,9 +325,9 @@ struct DetailRow: View {
 }
 
 struct BulletText: View {
-    let text: String
+    let text: LocalizedStringKey
 
-    init(_ text: String) {
+    init(_ text: LocalizedStringKey) {
         self.text = text
     }
 
@@ -339,10 +350,10 @@ struct ComingSoonView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(.secondary)
 
-            Text("\(provider.displayName) 지원 예정")
+            Text("\(provider.displayName) Coming Soon")
                 .font(.title3.bold())
 
-            Text("Phase 2에서 지원될 예정입니다")
+            Text("Coming in Phase 2")
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -365,9 +376,9 @@ enum StatusBarIcon: String, CaseIterable, Identifiable {
 
     static let `default`: StatusBarIcon = .brainHeadProfile
 
-    var displayName: String {
+    var displayName: LocalizedStringKey {
         switch self {
-        case .brainHeadProfile: return "Brain Profile (기본)"
+        case .brainHeadProfile: return "Brain Profile (Default)"
         case .brain: return "Brain"
         case .cpu: return "CPU"
         case .memorychip: return "Memory Chip"
@@ -382,8 +393,8 @@ enum StatusBarIcon: String, CaseIterable, Identifiable {
 }
 
 enum StatusBarMetric: String, CaseIterable, Identifiable {
-    case session = "세션 사용량 (5시간)"
-    case weekly = "주간 사용량 (7일)"
+    case session
+    case weekly
     case opus = "Opus"
     case sonnet = "Sonnet"
     case haiku = "Haiku"
@@ -396,37 +407,81 @@ struct GeneralSettingsView: View {
     @AppStorage("pollingInterval") private var pollingInterval = 90.0
     @AppStorage("statusBarMetric") private var statusBarMetric = "session"
     @AppStorage("statusBarIcon") private var statusBarIcon = StatusBarIcon.default.rawValue
+    @AppStorage("iconMode") private var iconMode = "static"
+    @AppStorage("includeCacheTokens") private var includeCacheTokens = true
+    @State private var showRestartAlert = false
 
     var body: some View {
         Form {
-            Section("메뉴바 표시") {
-                Picker("표시할 지표", selection: $statusBarMetric) {
-                    Text("세션 사용량 (5시간)").tag("session")
-                    Text("주간 사용량 (7일)").tag("weekly")
+            Section("Menu Bar Display") {
+                Picker("Metric to Display", selection: $statusBarMetric) {
+                    Text("Session Usage (5 Hours)").tag("session")
+                    Text("Weekly Usage (7 Days)").tag("weekly")
                     Divider()
-                    Text("Opus (주간)").tag("opus")
-                    Text("Sonnet (주간)").tag("sonnet")
-                    Text("Haiku (주간)").tag("haiku")
+                    Text("Opus (Weekly)").tag("opus")
+                    Text("Sonnet (Weekly)").tag("sonnet")
+                    Text("Haiku (Weekly)").tag("haiku")
                 }
                 .pickerStyle(.menu)
 
-                Text("메뉴바 아이콘 옆에 표시되는 사용량 %를 선택합니다")
+                Text("Select usage % displayed next to the menu bar icon")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
 
-            Section("메뉴바 아이콘") {
-                Picker("아이콘", selection: $statusBarIcon) {
-                    ForEach(StatusBarIcon.allCases) { icon in
-                        Label(icon.displayName, systemImage: icon.rawValue)
-                            .tag(icon.rawValue)
+            Section("Menu Bar Icon") {
+                Picker("Icon Mode", selection: $iconMode) {
+                    Text("Static (SF Symbol)").tag("static")
+                    Divider()
+                    ForEach(AnimatedIconTheme.allCases) { theme in
+                        Text(theme.localizedName).tag(theme.rawValue)
                     }
                 }
                 .pickerStyle(.menu)
+
+                if iconMode == "static" {
+                    Picker("Icon", selection: $statusBarIcon) {
+                        ForEach(StatusBarIcon.allCases) { icon in
+                            Label(icon.displayName, systemImage: icon.rawValue)
+                                .tag(icon.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } else {
+                    Text("Animation speed changes based on token usage")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
             }
 
-            Section("시작") {
-                Toggle("로그인 시 자동 실행", isOn: Binding(
+            Section("Language") {
+                Picker("App Language", selection: Binding(
+                    get: {
+                        UserDefaults.standard.stringArray(forKey: "AppleLanguages")?.first ?? "system"
+                    },
+                    set: { newValue in
+                        if newValue == "system" {
+                            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+                        } else {
+                            UserDefaults.standard.set([newValue], forKey: "AppleLanguages")
+                        }
+                        showRestartAlert = true
+                    }
+                )) {
+                    Text("System Default").tag("system")
+                    Divider()
+                    Text("English").tag("en")
+                    Text("한국어").tag("ko")
+                }
+                .pickerStyle(.menu)
+
+                Text("Restart the app to apply the language change")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+
+            Section("Startup") {
+                Toggle("Launch at Login", isOn: Binding(
                     get: { launchAtLogin },
                     set: { newValue in
                         do {
@@ -443,22 +498,45 @@ struct GeneralSettingsView: View {
                 ))
             }
 
-            Section("업데이트 주기") {
-                Picker("폴링 간격", selection: $pollingInterval) {
-                    Text("30초").tag(30.0)
-                    Text("60초").tag(60.0)
-                    Text("90초 (기본)").tag(90.0)
-                    Text("120초").tag(120.0)
-                    Text("300초").tag(300.0)
+            Section("Token Count") {
+                Toggle("Include cached tokens", isOn: $includeCacheTokens)
+
+                Text("When enabled, cached tokens are included in usage counts. Cached tokens count toward rate limits.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+
+            Section("Update Interval") {
+                Picker("Polling Interval", selection: $pollingInterval) {
+                    Text("30 sec").tag(30.0)
+                    Text("60 sec").tag(60.0)
+                    Text("90 sec (Default)").tag(90.0)
+                    Text("120 sec").tag(120.0)
+                    Text("300 sec").tag(300.0)
                 }
             }
 
-            Section("정보") {
-                LabeledContent("버전", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–")
-                LabeledContent("빌드", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–")
+            Section("Info") {
+                LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–")
+                LabeledContent("Build", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–")
             }
         }
         .formStyle(.grouped)
         .padding(16)
+        .alert("Restart Required", isPresented: $showRestartAlert) {
+            Button("Restart Now") {
+                let url = URL(fileURLWithPath: Bundle.main.bundlePath)
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.createsNewApplicationInstance = true
+                NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in
+                    DispatchQueue.main.async {
+                        NSApp.terminate(nil)
+                    }
+                }
+            }
+            Button("Later", role: .cancel) {}
+        } message: {
+            Text("The app needs to restart to apply the language change.")
+        }
     }
 }

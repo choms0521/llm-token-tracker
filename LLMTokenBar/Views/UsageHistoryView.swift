@@ -20,7 +20,7 @@ struct UsageHistoryView: View {
     private var dateRange: String {
         let formatter = DateFormatter()
         formatter.locale = Locale.current
-        formatter.dateFormat = "M월 d일, a h:mm"
+        formatter.setLocalizedDateFormatFromTemplate("MdEahm")
         let end = Date()
         let start = end.addingTimeInterval(-selectedRange.seconds)
         return "\(formatter.string(from: start)) – \(formatter.string(from: end))"
@@ -44,16 +44,16 @@ struct UsageHistoryView: View {
     private var headerView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("사용 기록")
+                Text("Usage History")
                     .font(.title2.bold())
-                Text("시간 경과에 따른 사용량 추적")
+                Text("Track usage over time")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
             Spacer()
             Picker("", selection: $selectedRange) {
                 ForEach(TimeRange.allCases) { range in
-                    Text(range.rawValue).tag(range)
+                    Text(range.localizedName).tag(range)
                 }
             }
             .pickerStyle(.menu)
@@ -96,7 +96,7 @@ struct UsageHistoryView: View {
             HStack {
                 Image(systemName: "chart.xyaxis.line")
                     .foregroundStyle(.secondary)
-                Text("사용량 개요")
+                Text("Usage Overview")
                     .font(.system(size: 13, weight: .medium))
             }
 
@@ -121,10 +121,10 @@ struct UsageHistoryView: View {
             Image(systemName: "chart.line.downtrend.xyaxis")
                 .font(.system(size: 30))
                 .foregroundStyle(.secondary)
-            Text("선택한 범위에 데이터 없음")
+            Text("No data in selected range")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-            Text("사용량 데이터가 90초마다 자동으로 기록됩니다")
+            Text("Usage data is recorded automatically every 90 seconds")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
         }
@@ -137,9 +137,9 @@ struct UsageHistoryView: View {
             if showSession {
                 ForEach(filteredSnapshots.filter { $0.sessionUtilization != nil }) { s in
                     LineMark(
-                        x: .value("시간", s.timestamp),
-                        y: .value("사용량", s.sessionUtilization ?? 0),
-                        series: .value("유형", "세션")
+                        x: .value("Time", s.timestamp),
+                        y: .value("Usage", s.sessionUtilization ?? 0),
+                        series: .value("Type", String(localized: "Session"))
                     )
                     .foregroundStyle(.orange)
                     .interpolationMethod(.stepEnd)
@@ -150,9 +150,9 @@ struct UsageHistoryView: View {
             if showWeekly {
                 ForEach(filteredSnapshots.filter { $0.weeklyUtilization != nil }) { s in
                     LineMark(
-                        x: .value("시간", s.timestamp),
-                        y: .value("사용량", s.weeklyUtilization ?? 0),
-                        series: .value("유형", "주간")
+                        x: .value("Time", s.timestamp),
+                        y: .value("Usage", s.weeklyUtilization ?? 0),
+                        series: .value("Type", String(localized: "Weekly"))
                     )
                     .foregroundStyle(.blue)
                     .interpolationMethod(.stepEnd)
@@ -166,9 +166,9 @@ struct UsageHistoryView: View {
                     $0.modelUtilizations[modelName.lowercased()] != nil
                 }) { s in
                     LineMark(
-                        x: .value("시간", s.timestamp),
-                        y: .value("사용량", s.modelUtilizations[modelName.lowercased()] ?? 0),
-                        series: .value("유형", modelName)
+                        x: .value("Time", s.timestamp),
+                        y: .value("Usage", s.modelUtilizations[modelName.lowercased()] ?? 0),
+                        series: .value("Type", modelName)
                     )
                     .foregroundStyle(color)
                     .interpolationMethod(.stepEnd)
@@ -210,10 +210,10 @@ struct UsageHistoryView: View {
         HStack(spacing: 16) {
             Spacer()
             if showSession {
-                legendItem(color: .orange, label: "세션 사용량", dashed: false)
+                legendItem(color: .orange, label: String(localized: "Session Usage"), dashed: false)
             }
             if showWeekly {
-                legendItem(color: .blue, label: "주간 사용량", dashed: true)
+                legendItem(color: .blue, label: String(localized: "Weekly Usage"), dashed: true)
             }
             ForEach(Array(selectedModels).sorted(), id: \.self) { name in
                 legendItem(color: colorForModel(name), label: name, dashed: false)
@@ -241,17 +241,17 @@ struct UsageHistoryView: View {
 
     private var metricToggles: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("표시할 지표")
+            Text("Metrics to Display")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
-                ToggleChip(label: "세션 사용량", color: .orange, isOn: $showSession)
-                ToggleChip(label: "주간 사용량", color: .blue, isOn: $showWeekly)
+                ToggleChip(label: "Session Usage", color: .orange, isOn: $showSession)
+                ToggleChip(label: "Weekly Usage", color: .blue, isOn: $showWeekly)
             }
 
             if !availableModels.isEmpty {
-                Text("모델별")
+                Text("By Model")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.tertiary)
 
@@ -311,7 +311,7 @@ struct UsageHistoryView: View {
 }
 
 struct ToggleChip: View {
-    let label: String
+    let label: LocalizedStringKey
     let color: Color
     @Binding var isOn: Bool
 

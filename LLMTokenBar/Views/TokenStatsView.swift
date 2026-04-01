@@ -2,10 +2,17 @@ import SwiftUI
 import Charts
 
 enum ChartTimeRange: String, CaseIterable, Identifiable {
-    case daily = "일별"
-    case monthly = "월별"
+    case daily
+    case monthly
 
     var id: String { rawValue }
+
+    var localizedName: LocalizedStringKey {
+        switch self {
+        case .daily: return "Daily"
+        case .monthly: return "Monthly"
+        }
+    }
 }
 
 struct TokenStatsView: View {
@@ -14,18 +21,20 @@ struct TokenStatsView: View {
         let cal = Calendar.current
         return cal.dateComponents([.year, .month], from: Date())
     }()
-    @State private var selectedProvider: String? = nil
+    @State private var selectedProvider: String = "all"
     @State private var chartTimeRange: ChartTimeRange = .daily
+    @AppStorage("includeCacheTokens") private var includeCacheTokens = true
 
-    private static let providerFilters: [(id: String?, label: String)] = [
-        (nil, "전체"),
+    private static let providerFilters: [(id: String, label: LocalizedStringKey)] = [
+        ("all", "All"),
         ("claude", "Claude"),
         ("gemini", "Gemini"),
         ("openai", "OpenAI"),
     ]
 
     private func matchesProvider(_ modelId: String) -> Bool {
-        guard let provider = selectedProvider else { return true }
+        guard selectedProvider != "all" else { return true }
+        let provider = selectedProvider
         let id = modelId.lowercased()
         if provider == "openai" {
             return id.hasPrefix("gpt") || id.hasPrefix("o1") || id.hasPrefix("o3") || id.hasPrefix("o4") || id.hasPrefix("chatgpt")
@@ -56,7 +65,7 @@ struct TokenStatsView: View {
             let dc = cal.dateComponents([.year, .month], from: entry.date)
             guard let year = dc.year, let month = dc.month else { continue }
             let key = String(format: "%04d-%02d", year, month)
-            monthlyMap[key, default: [:]][entry.modelId, default: 0] += entry.tokens
+            monthlyMap[key, default: [:]][entry.modelId, default: 0] += entry.effectiveTokens(includeCache: includeCacheTokens)
         }
 
         let dateFormatter = DateFormatter()
@@ -83,7 +92,7 @@ struct TokenStatsView: View {
         let source = chartTimeRange == .daily ? filteredDailyTokens : monthlyTokenEntries
         var tokensByModel: [String: Int] = [:]
         for entry in source {
-            tokensByModel[entry.modelId, default: 0] += entry.tokens
+            tokensByModel[entry.modelId, default: 0] += entry.effectiveTokens(includeCache: includeCacheTokens)
         }
         return tokensByModel
             .map { MonthlyModelSummary(id: $0.key, displayName: $0.key, totalTokens: $0.value) }
@@ -94,11 +103,16 @@ struct TokenStatsView: View {
         filteredModelSummaries.reduce(0) { $0 + $1.totalTokens }
     }
 
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.setLocalizedDateFormatFromTemplate("yMMMM")
+        return formatter
+    }()
+
     private var monthLabel: String {
-        guard let year = selectedMonth.year, let month = selectedMonth.month else {
-            return ""
-        }
-        return "\(year)년 \(month)월"
+        guard let date = Calendar.current.date(from: selectedMonth) else { return "" }
+        return Self.monthFormatter.string(from: date)
     }
 
     var body: some View {
@@ -128,7 +142,7 @@ struct TokenStatsView: View {
             VStack(spacing: 12) {
                 ProgressView()
                     .controlSize(.large)
-                Text("통계 데이터 로딩 중...")
+                Text("Loading statistics...")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -142,13 +156,19 @@ struct TokenStatsView: View {
     private var headerView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("토큰 사용량")
+                Text("Token Usage")
                     .font(.title2.bold())
-                Text("모델별 토큰 사용 통계 (로컬 데이터)")
+                Text("Token usage statistics by model (local data)")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
             Spacer()
+
+            Toggle("Include Cache", isOn: $includeCacheTokens)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .font(.system(size: 11))
+
             Button(action: { service.reload() }) {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 12))
@@ -170,7 +190,7 @@ struct TokenStatsView: View {
     private var todayTokensByModel: [(modelId: String, tokens: Int)] {
         var map: [String: Int] = [:]
         for entry in todayEntries {
-            map[entry.modelId, default: 0] += entry.tokens
+            map[entry.modelId, default: 0] += entry.effectiveTokens(includeCache: includeCacheTokens)
         }
         return map.map { (modelId: $0.key, tokens: $0.value) }.sorted { $0.tokens > $1.tokens }
     }
@@ -185,7 +205,7 @@ struct TokenStatsView: View {
                 Image(systemName: "clock.fill")
                     .foregroundStyle(.orange)
                     .font(.system(size: 12))
-                Text("오늘 사용량")
+                Text("Today's Usage")
                     .font(.system(size: 13, weight: .medium))
                 Spacer()
                 Text(formatTokenCount(todayTotalTokens))
@@ -194,7 +214,7 @@ struct TokenStatsView: View {
             }
 
             if todayTokensByModel.isEmpty {
-                Text("오늘 사용 기록 없음")
+                Text("No usage today")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
@@ -224,7 +244,7 @@ struct TokenStatsView: View {
 
     private var providerSelector: some View {
         HStack(spacing: 0) {
-            ForEach(Self.providerFilters, id: \.label) { filter in
+            ForEach(Self.providerFilters, id: \.id) { filter in
                 Button(action: { selectedProvider = filter.id }) {
                     Text(filter.label)
                         .font(.system(size: 12, weight: selectedProvider == filter.id ? .semibold : .regular))
@@ -253,7 +273,7 @@ struct TokenStatsView: View {
                 // Time range toggle
                 Picker("", selection: $chartTimeRange) {
                     ForEach(ChartTimeRange.allCases) { range in
-                        Text(range.rawValue).tag(range)
+                        Text(range.localizedName).tag(range)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -271,7 +291,9 @@ struct TokenStatsView: View {
                     Image(systemName: "chart.bar.xaxis")
                         .font(.system(size: 28))
                         .foregroundStyle(.secondary)
-                    Text(chartTimeRange == .daily ? "\(monthLabel) 데이터 없음" : "데이터 없음")
+                    Text(chartTimeRange == .daily
+                         ? "No data for \(monthLabel)"
+                         : "No data")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
@@ -291,10 +313,10 @@ struct TokenStatsView: View {
     private var dailyChartContent: some View {
         Chart(filteredDailyTokens) { entry in
             BarMark(
-                x: .value("날짜", entry.date, unit: .day),
-                y: .value("토큰", entry.tokens)
+                x: .value("Date", entry.date, unit: .day),
+                y: .value("Tokens", entry.effectiveTokens(includeCache: includeCacheTokens))
             )
-            .foregroundStyle(by: .value("모델", entry.modelId))
+            .foregroundStyle(by: .value("Model", entry.modelId))
         }
         .chartForegroundStyleScale { (modelId: String) -> Color in
             Self.colorForModelId(modelId)
@@ -324,10 +346,10 @@ struct TokenStatsView: View {
     private var monthlyChartContent: some View {
         Chart(monthlyTokenEntries) { entry in
             BarMark(
-                x: .value("월", entry.date, unit: .month),
-                y: .value("토큰", entry.tokens)
+                x: .value("Month", entry.date, unit: .month),
+                y: .value("Tokens", entry.effectiveTokens(includeCache: includeCacheTokens))
             )
-            .foregroundStyle(by: .value("모델", entry.modelId))
+            .foregroundStyle(by: .value("Model", entry.modelId))
         }
         .chartForegroundStyleScale { (modelId: String) -> Color in
             Self.colorForModelId(modelId)
@@ -399,10 +421,10 @@ struct TokenStatsView: View {
     private var modelBreakdown: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("모델별 사용량")
+                Text("Usage by Model")
                     .font(.system(size: 13, weight: .medium))
                 Spacer()
-                Text("합계: \(formatTokenCount(filteredTotalTokens))")
+                Text("Total: \(formatTokenCount(filteredTotalTokens))")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.orange)
             }
@@ -412,7 +434,7 @@ struct TokenStatsView: View {
             }
 
             if filteredModelSummaries.isEmpty {
-                Text("모델 데이터 없음")
+                Text("No model data")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
