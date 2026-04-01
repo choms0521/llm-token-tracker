@@ -77,10 +77,10 @@ final class TokenStatsServiceTests: XCTestCase {
         }
         await fulfillment(of: [loaded], timeout: 5.0)
 
-        // Should use first entry's output (100), not second (500)
+        // Should use last entry's output (500) — final cumulative usage
         let summary = service.modelSummaries.first { $0.id == "claude-opus-4-6" }
         XCTAssertNotNil(summary)
-        XCTAssertEqual(summary?.outputTokens, 100)
+        XCTAssertEqual(summary?.outputTokens, 500)
     }
 
     @MainActor
