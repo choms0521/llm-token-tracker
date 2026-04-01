@@ -93,7 +93,7 @@ struct SettingsView: View {
                 syncStatus: manager.syncStatus,
                 onResync: { Task { await manager.resync() } },
                 onDisconnect: { manager.disconnect() },
-                onSyncFromCLI: { manager.syncFromCLI() }
+                onSyncFromCLI: { await manager.syncFromCLI() }
             )
         case .gemini:
             GeminiSettingsView()
@@ -114,7 +114,7 @@ struct CLISyncDetailView: View {
     let syncStatus: SyncStatus
     var onResync: () -> Void
     var onDisconnect: () -> Void
-    var onSyncFromCLI: () -> Void = {}
+    var onSyncFromCLI: () async -> Void = {}
     @State private var isSyncing = false
 
     var body: some View {
@@ -178,9 +178,8 @@ struct CLISyncDetailView: View {
 
             Button(action: {
                 isSyncing = true
-                onSyncFromCLI()
                 Task {
-                    try? await Task.sleep(for: .seconds(1))
+                    await onSyncFromCLI()
                     isSyncing = false
                 }
             }) {
