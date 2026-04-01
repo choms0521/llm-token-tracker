@@ -61,12 +61,12 @@ final class UsagePollingManager: ObservableObject {
         }
     }
 
-    private func fetchAll() async {
+    private func fetchAll(force: Bool = false) async {
         // 중복 호출 방지
         guard !isFetching else { return }
 
-        // 최소 간격 쓰로틀 (폴링 루프의 첫 호출은 예외)
-        if let lastFetchTime {
+        // 최소 간격 쓰로틀 (폴링 루프의 첫 호출은 예외, force 시 무시)
+        if !force, let lastFetchTime {
             let elapsed = Date().timeIntervalSince(lastFetchTime)
             if elapsed < minimumFetchInterval {
                 return
@@ -162,7 +162,7 @@ final class UsagePollingManager: ObservableObject {
     }
 
     func resync() async {
-        await fetchAll()
+        await fetchAll(force: true)
     }
 
     func disconnect() {
@@ -174,12 +174,10 @@ final class UsagePollingManager: ObservableObject {
         syncStatus = .disconnected(for: .claude)
     }
 
-    func syncFromCLI() {
+    func syncFromCLI() async {
         // Re-read credentials from Keychain (no re-login needed)
         // Claude Code stores OAuth tokens in Keychain when user logs in via CLI
-        Task {
-            await fetchAll()
-        }
+        await fetchAll(force: true)
     }
 
     var subscriptionLabel: String {
