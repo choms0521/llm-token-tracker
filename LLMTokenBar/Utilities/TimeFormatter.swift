@@ -1,32 +1,35 @@
 import Foundation
 
 enum TimeFormatter {
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        return formatter
-    }()
-
     static func resetTimeString(from date: Date?) -> String {
         guard let date else { return "" }
 
         let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateFormat = DateFormatter.dateFormat(
+            fromTemplate: "hmma",
+            options: 0,
+            locale: Locale.current
+        ) ?? "h:mm a"
 
         if calendar.isDateInToday(date) {
-            dateFormatter.dateFormat = "a h:mm"
-            let timeStr = dateFormatter.string(from: date)
-            return "Today \(timeStr) 리셋"
+            let timeStr = formatter.string(from: date)
+            return String(localized: "Resets today at \(timeStr)")
         }
 
         if calendar.isDateInTomorrow(date) {
-            dateFormatter.dateFormat = "a h:mm"
-            let timeStr = dateFormatter.string(from: date)
-            return "Tomorrow \(timeStr) 리셋"
+            let timeStr = formatter.string(from: date)
+            return String(localized: "Resets tomorrow at \(timeStr)")
         }
 
-        dateFormatter.dateFormat = "M월 d일, a h:mm"
-        let timeStr = dateFormatter.string(from: date)
-        return "\(timeStr) 리셋"
+        formatter.dateFormat = DateFormatter.dateFormat(
+            fromTemplate: "MdEhmma",
+            options: 0,
+            locale: Locale.current
+        ) ?? "MMM d, h:mm a"
+        let timeStr = formatter.string(from: date)
+        return String(localized: "Resets \(timeStr)")
     }
 
     static func remainingTimeString(from date: Date?) -> String {
@@ -35,7 +38,7 @@ enum TimeFormatter {
         let now = Date()
         let remaining = date.timeIntervalSince(now)
 
-        guard remaining > 0 else { return "곧 리셋" }
+        guard remaining > 0 else { return String(localized: "Resets soon") }
 
         let hours = Int(remaining) / 3600
         let minutes = (Int(remaining) % 3600) / 60
@@ -43,33 +46,33 @@ enum TimeFormatter {
         if hours > 24 {
             let days = hours / 24
             let remainingHours = hours % 24
-            return "\(days)일 \(remainingHours)시간 남음"
+            return String(localized: "\(days) days \(remainingHours) hours remaining")
         }
 
         if hours > 0 {
-            return "\(hours)시간 \(minutes)분 남음"
+            return String(localized: "\(hours) hours \(minutes) minutes remaining")
         }
 
-        return "\(minutes)분 남음"
+        return String(localized: "\(minutes) minutes remaining")
     }
 
     static func syncTimeString(from date: Date?) -> String {
-        guard let date else { return "동기화 안됨" }
+        guard let date else { return String(localized: "Never synced") }
 
         let now = Date()
         let elapsed = now.timeIntervalSince(date)
 
         if elapsed < 60 {
-            return "방금 동기화됨"
+            return String(localized: "Just synced")
         }
 
         let minutes = Int(elapsed) / 60
         let hours = minutes / 60
 
         if hours > 0 {
-            return "\(hours)시간 \(minutes % 60)분 전 동기화"
+            return String(localized: "Synced \(hours) hours \(minutes % 60) minutes ago")
         }
 
-        return "\(minutes)분 전 동기화"
+        return String(localized: "Synced \(minutes) minutes ago")
     }
 }

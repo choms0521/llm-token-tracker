@@ -11,6 +11,7 @@ final class StatusBarController: NSObject {
     private var settingsWindow: NSWindow?
     private var eventMonitor: Any?
     private var iconObserver: NSObjectProtocol?
+    private var animationController: MenuBarAnimationController?
 
     init(manager: UsagePollingManager, historyStore: UsageHistoryStore, tokenStats: TokenStatsService) {
         self.manager = manager
@@ -41,14 +42,37 @@ final class StatusBarController: NSObject {
     private func setupStatusItem() {
         guard let button = statusItem.button else { return }
 
-        let iconName = UserDefaults.standard.string(forKey: "statusBarIcon") ?? StatusBarIcon.default.rawValue
-        button.image = NSImage(
-            systemSymbolName: iconName,
-            accessibilityDescription: "Token Usage"
-        )
         button.imagePosition = .imageLeading
         button.action = #selector(togglePopover)
         button.target = self
+
+        applyIconSetting()
+    }
+
+    private func applyIconSetting() {
+        let iconMode = UserDefaults.standard.string(forKey: "iconMode") ?? "static"
+
+        // Stop any existing animation
+        animationController?.stop()
+        animationController = nil
+
+        if iconMode == "static" {
+            let iconName = UserDefaults.standard.string(forKey: "statusBarIcon") ?? StatusBarIcon.default.rawValue
+            statusItem.button?.image = NSImage(
+                systemSymbolName: iconName,
+                accessibilityDescription: String(localized: "Token Usage")
+            )
+        } else if let theme = AnimatedIconTheme(rawValue: iconMode) {
+            let controller = MenuBarAnimationController(theme: theme)
+            animationController = controller
+
+            // Set initial frame immediately
+            statusItem.button?.image = theme.frame(0)
+
+            controller.start { [weak self] image in
+                self?.statusItem.button?.image = image
+            }
+        }
     }
 
     private func observeIconChanges() {
@@ -58,21 +82,17 @@ final class StatusBarController: NSObject {
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.updateIcon()
+                self?.applyIconSetting()
             }
         }
     }
 
-    private func updateIcon() {
-        let iconName = UserDefaults.standard.string(forKey: "statusBarIcon") ?? StatusBarIcon.default.rawValue
-        statusItem.button?.image = NSImage(
-            systemSymbolName: iconName,
-            accessibilityDescription: "Token Usage"
-        )
-    }
-
     func updateStatusText(_ text: String) {
         statusItem.button?.title = " \(text)"
+    }
+
+    func updateUtilization(_ value: Double) {
+        animationController?.updateUtilization(value)
     }
 
     @objc private func togglePopover() {
@@ -129,7 +149,7 @@ final class StatusBarController: NSObject {
         let hostingController = NSHostingController(rootView: settingsView)
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "LLM Token Bar 설정"
+        window.title = String(localized: "LLM Token Bar Settings")
         window.styleMask = [.titled, .closable, .resizable]
         window.setContentSize(NSSize(
             width: Constants.UI.settingsWidth,

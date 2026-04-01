@@ -72,7 +72,20 @@ struct DailyTokenEntry: Identifiable {
     let id: String
     let date: Date
     let modelId: String
-    let tokens: Int
+    let tokens: Int           // with cache (default)
+    let tokensNoCache: Int    // without cache
+
+    init(id: String, date: Date, modelId: String, tokens: Int, tokensNoCache: Int? = nil) {
+        self.id = id
+        self.date = date
+        self.modelId = modelId
+        self.tokens = tokens
+        self.tokensNoCache = tokensNoCache ?? tokens
+    }
 
     var displayModelName: String { modelId }
+
+    func effectiveTokens(includeCache: Bool) -> Int {
+        includeCache ? tokens : tokensNoCache
+    }
 }

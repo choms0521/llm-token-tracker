@@ -91,7 +91,7 @@ struct PopoverView: View {
 
     private var modelBreakdownView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("토큰 사용량 (최근 7일)")
+            Text("Token Usage (Last 7 Days)")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
 
@@ -121,7 +121,7 @@ struct PopoverView: View {
                     let resetDate = primary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
                     let isReset = resetDate.map { $0 < Date() } ?? false
                     UsageCardView(entry: UsageEntry(
-                        label: "세션 사용량 (5시간)",
+                        label: String(localized: "Session Usage (5 Hours)"),
                         sublabel: "Codex \(limits.planType ?? "plus")",
                         utilization: isReset ? 0 : (primary.usedPercent ?? 0),
                         resetsAt: isReset ? nil : resetDate
@@ -132,7 +132,7 @@ struct PopoverView: View {
                     let resetDate = secondary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
                     let isReset = resetDate.map { $0 < Date() } ?? false
                     UsageCardView(entry: UsageEntry(
-                        label: "주간 사용량 (7일)",
+                        label: String(localized: "Weekly Usage (7 Days)"),
                         sublabel: "Codex \(limits.planType ?? "plus")",
                         utilization: isReset ? 0 : (secondary.usedPercent ?? 0),
                         resetsAt: isReset ? nil : resetDate
@@ -165,11 +165,11 @@ struct PopoverView: View {
                 .font(.system(size: 24))
                 .foregroundStyle(.secondary)
 
-            Text("Claude CLI에 로그인하세요")
+            Text("Please log in to Claude CLI")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
-            Text("~/.claude/.credentials.json 파일이 필요합니다")
+            Text("~/.claude/.credentials.json file is required")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
         }

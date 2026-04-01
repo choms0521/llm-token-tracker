@@ -5,6 +5,9 @@ options:
     macOS: "14.0"
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
+  knownRegions:
+    - en
+    - ko
 
 configFiles:
   Debug: Local.xcconfig

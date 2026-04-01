@@ -55,7 +55,7 @@ final class GeminiSessionParser: @unchecked Sendable {
 
     func parse() -> (dailyTokens: [DailyTokenEntry], modelSummaries: [ModelSummary]) {
         let files = findSessionFiles()
-        var dailyMap: [String: [String: Int]] = [:] // date -> modelId -> tokens
+        var dailyMap: [String: [String: (withCache: Int, noCache: Int)]] = [:]
         var modelTotals: [String: ModelTokenAccumulator] = [:]
         var seenSessions: Set<String> = []
 
@@ -84,8 +84,8 @@ final class GeminiSessionParser: @unchecked Sendable {
                     continue
                 }
 
-                let totalTokens = (tokens.input ?? 0)
-                    + (tokens.output ?? 0)
+                let tokensNoCache = (tokens.input ?? 0) + (tokens.output ?? 0)
+                let totalTokens = tokensNoCache + (tokens.cached ?? 0)
 
                 guard totalTokens > 0 else { continue }
 
@@ -102,7 +102,10 @@ final class GeminiSessionParser: @unchecked Sendable {
                     }
                 }
 
-                dailyMap[dateKey, default: [:]][modelName, default: 0] += totalTokens
+                var entry = dailyMap[dateKey, default: [:]][modelName, default: (0, 0)]
+                entry.withCache += totalTokens
+                entry.noCache += tokensNoCache
+                dailyMap[dateKey, default: [:]][modelName] = entry
 
                 var acc = modelTotals[modelName] ?? ModelTokenAccumulator()
                 acc.inputTokens += tokens.input ?? 0
@@ -115,12 +118,13 @@ final class GeminiSessionParser: @unchecked Sendable {
 
         let dailyTokens: [DailyTokenEntry] = dailyMap.flatMap { (dateStr, models) -> [DailyTokenEntry] in
             guard let date = dateFormatter.date(from: dateStr) else { return [] }
-            return models.map { (modelId, tokens) in
+            return models.map { (modelId, pair) in
                 DailyTokenEntry(
                     id: "\(dateStr)-\(modelId)",
                     date: date,
                     modelId: modelId,
-                    tokens: tokens
+                    tokens: pair.withCache,
+                    tokensNoCache: pair.noCache
                 )
             }
         }.sorted { $0.date < $1.date }

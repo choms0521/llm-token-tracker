@@ -1,0 +1,1589 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "(%@%%)" : {
+
+    },
+    "%@ Coming Soon" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 지원 예정"
+          }
+        }
+      }
+    },
+    "%@%%" : {
+
+    },
+    "%lld days %lld hours remaining" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld일 %lld시간 남음"
+          }
+        }
+      }
+    },
+    "%lld files" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld개"
+          }
+        }
+      }
+    },
+    "%lld hours %lld minutes remaining" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld시간 %lld분 남음"
+          }
+        }
+      }
+    },
+    "%lld minutes remaining" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld분 남음"
+          }
+        }
+      }
+    },
+    "•" : {
+
+    },
+    "~/.claude/.credentials.json file is required" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/.claude/.credentials.json 파일이 필요합니다"
+          }
+        }
+      }
+    },
+    "~/.codex/ directory exists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/.codex/ 디렉토리가 존재합니다"
+          }
+        }
+      }
+    },
+    "~/.gemini/ directory exists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/.gemini/ 디렉토리가 존재합니다"
+          }
+        }
+      }
+    },
+    "1 hour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1시간"
+          }
+        }
+      }
+    },
+    "5-hour rolling window" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5시간 롤링 윈도우"
+          }
+        }
+      }
+    },
+    "6 hours" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "6시간"
+          }
+        }
+      }
+    },
+    "7 days" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7일"
+          }
+        }
+      }
+    },
+    "24 hours" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24시간"
+          }
+        }
+      }
+    },
+    "30 sec" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30초"
+          }
+        }
+      }
+    },
+    "60 sec" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "60초"
+          }
+        }
+      }
+    },
+    "90 sec (Default)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "90초 (기본)"
+          }
+        }
+      }
+    },
+    "120 sec" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "120초"
+          }
+        }
+      }
+    },
+    "300 sec" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "300초"
+          }
+        }
+      }
+    },
+    "Access Token" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "액세스 토큰"
+          }
+        }
+      }
+    },
+    "Account Details" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계정 세부정보"
+          }
+        }
+      }
+    },
+    "All" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전체"
+          }
+        }
+      }
+    },
+    "All Models" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 모델"
+          }
+        }
+      }
+    },
+    "All Systems Operational" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 시스템 정상"
+          }
+        }
+      }
+    },
+    "Animation speed changes based on token usage" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 사용량에 따라 애니메이션 속도가 변합니다"
+          }
+        }
+      }
+    },
+    "App Language" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 언어"
+          }
+        }
+      }
+    },
+    "Auto-refresh credentials on profile switch" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프로필 전환 시 자격 증명 자동 새로 고침"
+          }
+        }
+      }
+    },
+    "Auto-switch CLI login by profile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프로필로 CLI 로그인 자동 전환"
+          }
+        }
+      }
+    },
+    "Brain Profile (Default)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brain Profile (기본)"
+          }
+        }
+      }
+    },
+    "Build" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "빌드"
+          }
+        }
+      }
+    },
+    "By Model" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델별"
+          }
+        }
+      }
+    },
+    "Car" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "자동차"
+          }
+        }
+      }
+    },
+    "Cat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "고양이"
+          }
+        }
+      }
+    },
+    "CLI Account" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CLI 계정"
+          }
+        }
+      }
+    },
+    "CLI Account Sync Info" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CLI 계정 동기화 정보"
+          }
+        }
+      }
+    },
+    "CLI Account Synced" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CLI 계정 동기화됨"
+          }
+        }
+      }
+    },
+    "Codex CLI" : {
+
+    },
+    "Codex CLI Detected" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI 감지됨"
+          }
+        }
+      }
+    },
+    "Codex CLI Not Installed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI 미설치"
+          }
+        }
+      }
+    },
+    "Coming in Phase 2" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phase 2에서 지원될 예정입니다"
+          }
+        }
+      }
+    },
+    "Credentials" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "인증 정보"
+          }
+        }
+      }
+    },
+    "Daily" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일별"
+          }
+        }
+      }
+    },
+    "Data Path" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "데이터 경로"
+          }
+        }
+      }
+    },
+    "Data Source Info" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "데이터 소스 안내"
+          }
+        }
+      }
+    },
+    "Date" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날짜"
+          }
+        }
+      }
+    },
+    "Disconnected" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결 끊김"
+          }
+        }
+      }
+    },
+    "Dog" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강아지"
+          }
+        }
+      }
+    },
+    "English" : {
+
+    },
+    "Fire" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "불꽃"
+          }
+        }
+      }
+    },
+    "Gemini CLI" : {
+
+    },
+    "Gemini CLI Detected" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemini CLI 감지됨"
+          }
+        }
+      }
+    },
+    "Gemini CLI Not Installed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemini CLI 미설치"
+          }
+        }
+      }
+    },
+    "General" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일반"
+          }
+        }
+      }
+    },
+    "Haiku (Weekly)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haiku (주간)"
+          }
+        }
+      }
+    },
+    "History" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기록"
+          }
+        }
+      }
+    },
+    "Icon" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아이콘"
+          }
+        }
+      }
+    },
+    "Icon Mode" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아이콘 모드"
+          }
+        }
+      }
+    },
+    "Include Cache" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캐시 포함"
+          }
+        }
+      }
+    },
+    "Include cached tokens" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캐시 토큰 포함"
+          }
+        }
+      }
+    },
+    "Info" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정보"
+          }
+        }
+      }
+    },
+    "Install and log in to Codex CLI" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI를 설치하고 로그인하세요"
+          }
+        }
+      }
+    },
+    "Install and log in to Gemini CLI" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemini CLI를 설치하고 로그인하세요"
+          }
+        }
+      }
+    },
+    "Just synced" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "방금 동기화됨"
+          }
+        }
+      }
+    },
+    "Keep CLI and app accounts in sync" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CLI 및 앱 계정 동기화 유지"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언어"
+          }
+        }
+      }
+    },
+    "Last CLI Usage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 CLI 사용"
+          }
+        }
+      }
+    },
+    "Last Sync" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 동기화"
+          }
+        }
+      }
+    },
+    "Later" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "나중에"
+          }
+        }
+      }
+    },
+    "Launch at Login" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인 시 자동 실행"
+          }
+        }
+      }
+    },
+    "Lightning" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "번개"
+          }
+        }
+      }
+    },
+    "LLM Token Bar" : {
+
+    },
+    "LLM Token Bar Settings" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LLM Token Bar 설정"
+          }
+        }
+      }
+    },
+    "Loading statistics..." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "통계 데이터 로딩 중..."
+          }
+        }
+      }
+    },
+    "Log in with 'claude' command in terminal, then click below" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "터미널에서 'claude' 명령으로 로그인 후 아래 버튼을 클릭하세요"
+          }
+        }
+      }
+    },
+    "Menu Bar Display" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메뉴바 표시"
+          }
+        }
+      }
+    },
+    "Menu Bar Icon" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메뉴바 아이콘"
+          }
+        }
+      }
+    },
+    "Metric to Display" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표시할 지표"
+          }
+        }
+      }
+    },
+    "Metrics to Display" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표시할 지표"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델"
+          }
+        }
+      }
+    },
+    "Month" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "월"
+          }
+        }
+      }
+    },
+    "Monthly" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "월별"
+          }
+        }
+      }
+    },
+    "Must be logged in to Claude Code CLI" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code CLI에 로그인되어 있어야 합니다"
+          }
+        }
+      }
+    },
+    "Never synced" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화 안됨"
+          }
+        }
+      }
+    },
+    "No data" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "데이터 없음"
+          }
+        }
+      }
+    },
+    "No data for %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 데이터 없음"
+          }
+        }
+      }
+    },
+    "No data in selected range" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택한 범위에 데이터 없음"
+          }
+        }
+      }
+    },
+    "No model data" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델 데이터 없음"
+          }
+        }
+      }
+    },
+    "No synced credentials yet" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아직 동기화된 자격 증명 없음"
+          }
+        }
+      }
+    },
+    "No usage today" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 사용 기록 없음"
+          }
+        }
+      }
+    },
+    "Not Connected" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결 안됨"
+          }
+        }
+      }
+    },
+    "OpenAI Codex" : {
+
+    },
+    "Opus (Weekly)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opus (주간)"
+          }
+        }
+      }
+    },
+    "Parses session logs stored locally by Codex CLI" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI가 로컬에 저장하는 세션 로그를 파싱합니다"
+          }
+        }
+      }
+    },
+    "Parses session logs stored locally by Gemini CLI" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemini CLI가 로컬에 저장하는 세션 로그를 파싱합니다"
+          }
+        }
+      }
+    },
+    "Please log in to Claude CLI" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude CLI에 로그인하세요"
+          }
+        }
+      }
+    },
+    "Polling Interval" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴링 간격"
+          }
+        }
+      }
+    },
+    "Quit App" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 종료"
+          }
+        }
+      }
+    },
+    "Reads Codex CLI local session data to display token usage" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI 로컬 세션 데이터를 읽어 토큰 사용량을 표시합니다"
+          }
+        }
+      }
+    },
+    "Reads Gemini CLI local session data to display token usage" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemini CLI 로컬 세션 데이터를 읽어 토큰 사용량을 표시합니다"
+          }
+        }
+      }
+    },
+    "Real-time rate limit queries are not supported" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실시간 rate limit 조회는 지원되지 않습니다"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제거"
+          }
+        }
+      }
+    },
+    "Resets %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 리셋"
+          }
+        }
+      }
+    },
+    "Resets soon" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "곧 리셋"
+          }
+        }
+      }
+    },
+    "Resets today at %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 %@에 리셋"
+          }
+        }
+      }
+    },
+    "Resets tomorrow at %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내일 %@에 리셋"
+          }
+        }
+      }
+    },
+    "Restart Now" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금 재시작"
+          }
+        }
+      }
+    },
+    "Restart Required" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재시작 필요"
+          }
+        }
+      }
+    },
+    "Restart the app to apply the language change" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언어 변경을 적용하려면 앱을 재시작하세요"
+          }
+        }
+      }
+    },
+    "Resync" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 동기화"
+          }
+        }
+      }
+    },
+    "Scopes" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "범위"
+          }
+        }
+      }
+    },
+    "Select usage % displayed next to the menu bar icon" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메뉴바 아이콘 옆에 표시되는 사용량 %를 선택합니다"
+          }
+        }
+      }
+    },
+    "Session" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세션"
+          }
+        }
+      }
+    },
+    "Session Data" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세션 데이터"
+          }
+        }
+      }
+    },
+    "Session Files" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세션 파일"
+          }
+        }
+      }
+    },
+    "Session Usage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세션 사용량"
+          }
+        }
+      }
+    },
+    "Session Usage (5 Hours)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세션 사용량 (5시간)"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정"
+          }
+        }
+      }
+    },
+    "Sonnet (Weekly)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonnet (주간)"
+          }
+        }
+      }
+    },
+    "Startup" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시작"
+          }
+        }
+      }
+    },
+    "Static (SF Symbol)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정적 (SF Symbol)"
+          }
+        }
+      }
+    },
+    "Subscription" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "구독"
+          }
+        }
+      }
+    },
+    "Sync from Keychain" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keychain에서 동기화"
+          }
+        }
+      }
+    },
+    "Sync logged-in %@ CLI account" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인된 %@ CLI 계정 동기화"
+          }
+        }
+      }
+    },
+    "Synced %lld hours %lld minutes ago" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld시간 %lld분 전 동기화"
+          }
+        }
+      }
+    },
+    "Synced %lld minutes ago" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld분 전 동기화"
+          }
+        }
+      }
+    },
+    "Synced CLI Credentials" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화된 CLI 자격 증명"
+          }
+        }
+      }
+    },
+    "System Default" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 기본값"
+          }
+        }
+      }
+    },
+    "The app needs to restart to apply the language change." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언어 변경을 적용하려면 앱을 재시작해야 합니다."
+          }
+        }
+      }
+    },
+    "Time" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시간"
+          }
+        }
+      }
+    },
+    "Today's Usage" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 사용량"
+          }
+        }
+      }
+    },
+    "Token Count" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 집계"
+          }
+        }
+      }
+    },
+    "Token Stats" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 통계"
+          }
+        }
+      }
+    },
+    "Token Usage" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 사용량"
+          }
+        }
+      }
+    },
+    "Token Usage (Last 7 Days)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 사용량 (최근 7일)"
+          }
+        }
+      }
+    },
+    "Token usage statistics by model (local data)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델별 토큰 사용 통계 (로컬 데이터)"
+          }
+        }
+      }
+    },
+    "Tokens" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰"
+          }
+        }
+      }
+    },
+    "Total: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "합계: %@"
+          }
+        }
+      }
+    },
+    "Track usage over time" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시간 경과에 따른 사용량 추적"
+          }
+        }
+      }
+    },
+    "Type" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "유형"
+          }
+        }
+      }
+    },
+    "Update Interval" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "업데이트 주기"
+          }
+        }
+      }
+    },
+    "Usage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용량"
+          }
+        }
+      }
+    },
+    "Usage by Model" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델별 사용량"
+          }
+        }
+      }
+    },
+    "Usage data is recorded automatically every 90 seconds" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용량 데이터가 90초마다 자동으로 기록됩니다"
+          }
+        }
+      }
+    },
+    "Usage History" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용 기록"
+          }
+        }
+      }
+    },
+    "Usage Overview" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용량 개요"
+          }
+        }
+      }
+    },
+    "Version" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "버전"
+          }
+        }
+      }
+    },
+    "View with Gemini filter in Token Stats tab" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 통계 탭에서 Gemini 필터로 확인 가능합니다"
+          }
+        }
+      }
+    },
+    "View with OpenAI filter in Token Stats tab" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 통계 탭에서 OpenAI 필터로 확인 가능합니다"
+          }
+        }
+      }
+    },
+    "Weekly" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "주간"
+          }
+        }
+      }
+    },
+    "Weekly Usage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "주간 사용량"
+          }
+        }
+      }
+    },
+    "Weekly Usage (7 Days)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "주간 사용량 (7일)"
+          }
+        }
+      }
+    },
+    "When enabled, cached tokens are included in usage counts. Cached tokens count toward rate limits." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "활성화하면 캐시 토큰이 사용량에 포함됩니다. 캐시 토큰도 rate limit에 차감됩니다."
+          }
+        }
+      }
+    },
+    "한국어" : {
+
+    }
+  },
+  "version" : "1.0"
+}

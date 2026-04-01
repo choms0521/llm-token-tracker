@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct UsageSnapshot: Codable, Identifiable {
     let id: UUID
@@ -25,10 +26,17 @@ struct UsageSnapshot: Codable, Identifiable {
 }
 
 enum UsageMetric: String, CaseIterable, Identifiable {
-    case session = "세션 사용량"
-    case weekly = "주간 사용량"
+    case session
+    case weekly
 
     var id: String { rawValue }
+
+    var localizedName: LocalizedStringKey {
+        switch self {
+        case .session: return "Session Usage"
+        case .weekly: return "Weekly Usage"
+        }
+    }
 }
 
 struct ModelMetric: Identifiable, Hashable {
@@ -40,12 +48,21 @@ struct ModelMetric: Identifiable, Hashable {
 }
 
 enum TimeRange: String, CaseIterable, Identifiable {
-    case oneHour = "1시간"
-    case sixHours = "6시간"
-    case twentyFourHours = "24시간"
-    case sevenDays = "7일"
+    case oneHour
+    case sixHours
+    case twentyFourHours
+    case sevenDays
 
     var id: String { rawValue }
+
+    var localizedName: LocalizedStringKey {
+        switch self {
+        case .oneHour: return "1 hour"
+        case .sixHours: return "6 hours"
+        case .twentyFourHours: return "24 hours"
+        case .sevenDays: return "7 days"
+        }
+    }
 
     var seconds: TimeInterval {
         switch self {

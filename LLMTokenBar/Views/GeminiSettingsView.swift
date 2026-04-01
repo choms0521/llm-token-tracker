@@ -9,7 +9,7 @@ struct GeminiSettingsView: View {
                 Text("Gemini CLI")
                     .font(.title2.bold())
 
-                Text("Gemini CLI 로컬 세션 데이터를 읽어 토큰 사용량을 표시합니다")
+                Text("Reads Gemini CLI local session data to display token usage")
                     .foregroundStyle(.secondary)
                     .font(.system(size: 12))
 
@@ -29,12 +29,12 @@ struct GeminiSettingsView: View {
                 .frame(width: 8, height: 8)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(parser.isGeminiCLIInstalled ? "Gemini CLI 감지됨" : "Gemini CLI 미설치")
+                Text(parser.isGeminiCLIInstalled ? "Gemini CLI Detected" : "Gemini CLI Not Installed")
                     .font(.system(size: 13, weight: .medium))
 
                 Text(parser.isGeminiCLIInstalled
-                     ? "~/.gemini/ 디렉토리가 존재합니다"
-                     : "Gemini CLI를 설치하고 로그인하세요")
+                     ? "~/.gemini/ directory exists"
+                     : "Install and log in to Gemini CLI")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -47,33 +47,33 @@ struct GeminiSettingsView: View {
 
     private var sessionInfoView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("세션 데이터")
+            Text("Session Data")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
 
             DetailRow(
                 icon: "doc.text",
-                label: "세션 파일",
-                value: "\(parser.sessionFileCount)개"
+                label: String(localized: "Session Files"),
+                value: String(localized: "\(parser.sessionFileCount) files")
             )
 
             if let lastDate = parser.lastSessionDate {
                 DetailRow(
                     icon: "clock",
-                    label: "마지막 CLI 사용",
+                    label: String(localized: "Last CLI Usage"),
                     value: TimeFormatter.syncTimeString(from: lastDate)
                 )
             }
 
             DetailRow(
                 icon: "arrow.triangle.2.circlepath",
-                label: "마지막 동기화",
+                label: String(localized: "Last Sync"),
                 value: TimeFormatter.syncTimeString(from: Date())
             )
 
             DetailRow(
                 icon: "folder",
-                label: "데이터 경로",
+                label: String(localized: "Data Path"),
                 value: "~/.gemini/tmp/"
             )
         }
@@ -87,14 +87,14 @@ struct GeminiSettingsView: View {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(.blue)
-                Text("데이터 소스 안내")
+                Text("Data Source Info")
                     .font(.system(size: 12, weight: .medium))
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                BulletText("Gemini CLI가 로컬에 저장하는 세션 로그를 파싱합니다")
-                BulletText("토큰 통계 탭에서 Gemini 필터로 확인 가능합니다")
-                BulletText("실시간 rate limit 조회는 지원되지 않습니다")
+                BulletText("Parses session logs stored locally by Gemini CLI")
+                BulletText("View with Gemini filter in Token Stats tab")
+                BulletText("Real-time rate limit queries are not supported")
             }
             .padding(.leading, 4)
         }

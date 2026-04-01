@@ -92,14 +92,14 @@ final class UsageHistoryStoreTests: XCTestCase {
         UsageData(
             provider: .claude,
             sessionUsage: UsageEntry(
-                label: "세션 사용량",
-                sublabel: "5시간 롤링 윈도우",
+                label: "Session Usage",
+                sublabel: "5-hour rolling window",
                 utilization: 12.5,
                 resetsAt: timestamp.addingTimeInterval(3600)
             ),
             weeklyUsage: UsageEntry(
-                label: "모든 모델",
-                sublabel: "주간",
+                label: "All Models",
+                sublabel: "Weekly",
                 utilization: 52.0,
                 resetsAt: timestamp.addingTimeInterval(7200)
             ),
