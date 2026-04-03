@@ -11,7 +11,7 @@ struct OpenAISettingsView: View {
 
                 Text("Reads Codex CLI local session data to display token usage")
                     .foregroundStyle(.secondary)
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
 
                 cliStatusBanner
                 sessionInfoView
@@ -30,12 +30,12 @@ struct OpenAISettingsView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(parser.isCodexCLIInstalled ? "Codex CLI Detected" : "Codex CLI Not Installed")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.pretendard(size: 13, weight: .medium))
 
                 Text(parser.isCodexCLIInstalled
                      ? "~/.codex/ directory exists"
                      : "Install and log in to Codex CLI")
-                    .font(.system(size: 11))
+                    .font(.pretendard(size: 11))
                     .foregroundStyle(.secondary)
             }
         }
@@ -48,7 +48,7 @@ struct OpenAISettingsView: View {
     private var sessionInfoView: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Session Data")
-                .font(.system(size: 12, weight: .medium))
+                .font(.pretendard(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
 
             DetailRow(
@@ -88,7 +88,7 @@ struct OpenAISettingsView: View {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(.blue)
                 Text("Data Source Info")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.pretendard(size: 12, weight: .medium))
             }
 
             VStack(alignment: .leading, spacing: 4) {

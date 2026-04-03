@@ -17,18 +17,18 @@ struct UsageCardView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.label)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.pretendard(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
 
                     Text(entry.sublabel)
-                        .font(.system(size: 11))
+                        .font(.pretendard(size: 11))
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 Text("\(Int(entry.utilization))%")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.pretendard(size: 20, weight: .bold))
                     .foregroundStyle(progressColor)
             }
 
@@ -38,7 +38,7 @@ struct UsageCardView: View {
 
             if let resetsAt = entry.resetsAt {
                 Text(TimeFormatter.resetTimeString(from: resetsAt))
-                    .font(.system(size: 11))
+                    .font(.pretendard(size: 11))
                     .foregroundStyle(.secondary)
             }
         }
@@ -54,7 +54,7 @@ struct ModelUsageRow: View {
     var body: some View {
         HStack {
             Text(model.modelName)
-                .font(.system(size: 12))
+                .font(.pretendard(size: 12))
                 .foregroundStyle(.secondary)
 
             Spacer()
@@ -64,7 +64,7 @@ struct ModelUsageRow: View {
                 .frame(width: 80)
 
             Text("\(Int(model.utilization))%")
-                .font(.system(size: 12, weight: .medium))
+                .font(.pretendard(size: 12, weight: .medium))
                 .frame(width: 36, alignment: .trailing)
         }
     }
@@ -76,13 +76,13 @@ struct LocalModelUsageRow: View {
     var body: some View {
         HStack {
             Text(entry.displayName)
-                .font(.system(size: 12))
+                .font(.pretendard(size: 12))
                 .foregroundStyle(.primary)
 
             Spacer()
 
             Text(entry.formattedTokens)
-                .font(.system(size: 12, weight: .medium))
+                .font(.pretendard(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
         }
     }

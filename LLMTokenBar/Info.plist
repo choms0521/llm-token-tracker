@@ -31,5 +31,7 @@
 	<string>public.app-category.utilities</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
 </dict>
 </plist>

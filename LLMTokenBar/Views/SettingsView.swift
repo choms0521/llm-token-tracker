@@ -74,7 +74,7 @@ struct SettingsView: View {
         .safeAreaInset(edge: .bottom) {
             Button(action: { NSApp.terminate(nil) }) {
                 Label("Quit App", systemImage: "power")
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
@@ -145,11 +145,11 @@ struct CLISyncDetailView: View {
     private var disconnectedDetailsView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Account Details")
-                .font(.system(size: 12, weight: .medium))
+                .font(.pretendard(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
 
             Text("No synced credentials yet")
-                .font(.system(size: 13))
+                .font(.pretendard(size: 13))
                 .foregroundStyle(.primary)
         }
         .padding(12)
@@ -163,15 +163,15 @@ struct CLISyncDetailView: View {
             HStack(alignment: .top, spacing: 6) {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(.blue)
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Must be logged in to Claude Code CLI")
-                        .font(.system(size: 11))
+                        .font(.pretendard(size: 11))
                         .foregroundStyle(.secondary)
 
                     Text("Log in with 'claude' command in terminal, then click below")
-                        .font(.system(size: 10))
+                        .font(.pretendard(size: 10))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -211,11 +211,11 @@ struct CLISyncDetailView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(syncStatus.isConnected ? "CLI Account Synced" : "Not Connected")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.pretendard(size: 13, weight: .medium))
 
                 if let lastSync = syncStatus.lastSyncedAt {
                     Text(TimeFormatter.syncTimeString(from: lastSync))
-                        .font(.system(size: 11))
+                        .font(.pretendard(size: 11))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -229,11 +229,11 @@ struct CLISyncDetailView: View {
     private var accountDetailsView: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Account Details")
-                .font(.system(size: 12, weight: .medium))
+                .font(.pretendard(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
 
             Text("Synced CLI Credentials")
-                .font(.system(size: 11))
+                .font(.pretendard(size: 11))
                 .foregroundStyle(.secondary)
 
             if let token = syncStatus.maskedToken {
@@ -267,7 +267,7 @@ struct CLISyncDetailView: View {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(.blue)
                 Text("CLI Account Sync Info")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.pretendard(size: 12, weight: .medium))
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -307,16 +307,16 @@ struct DetailRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 11))
+                .font(.pretendard(size: 11))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.system(size: 10))
+                    .font(.pretendard(size: 10))
                     .foregroundStyle(.secondary)
                 Text(value)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.pretendard(size: 12, weight: .medium))
                     .textSelection(.enabled)
             }
         }
@@ -335,7 +335,7 @@ struct BulletText: View {
             Text("•")
             Text(text)
         }
-        .font(.system(size: 11))
+        .font(.pretendard(size: 11))
         .foregroundStyle(.secondary)
     }
 }
@@ -346,7 +346,7 @@ struct ComingSoonView: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: provider.iconName)
-                .font(.system(size: 40))
+                .font(.pretendard(size: 40))
                 .foregroundStyle(.secondary)
 
             Text("\(provider.displayName) Coming Soon")
@@ -424,7 +424,7 @@ struct GeneralSettingsView: View {
                 .pickerStyle(.menu)
 
                 Text("Select usage % displayed next to the menu bar icon")
-                    .font(.system(size: 10))
+                    .font(.pretendard(size: 10))
                     .foregroundStyle(.tertiary)
             }
 
@@ -448,7 +448,7 @@ struct GeneralSettingsView: View {
                     .pickerStyle(.menu)
                 } else {
                     Text("Animation speed changes based on token usage")
-                        .font(.system(size: 10))
+                        .font(.pretendard(size: 10))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -475,7 +475,7 @@ struct GeneralSettingsView: View {
                 .pickerStyle(.menu)
 
                 Text("Restart the app to apply the language change")
-                    .font(.system(size: 10))
+                    .font(.pretendard(size: 10))
                     .foregroundStyle(.tertiary)
             }
 
@@ -501,7 +501,7 @@ struct GeneralSettingsView: View {
                 Toggle("Include cached tokens", isOn: $includeCacheTokens)
 
                 Text("When enabled, cached tokens are included in usage counts. Cached tokens count toward rate limits.")
-                    .font(.system(size: 10))
+                    .font(.pretendard(size: 10))
                     .foregroundStyle(.tertiary)
             }
 

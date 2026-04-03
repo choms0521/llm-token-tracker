@@ -47,7 +47,7 @@ struct UsageHistoryView: View {
                 Text("Usage History")
                     .font(.title2.bold())
                 Text("Track usage over time")
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -78,7 +78,7 @@ struct UsageHistoryView: View {
             selectedModels = []
         }) {
             Text(label)
-                .font(.system(size: 12, weight: selectedProvider == provider ? .semibold : .regular))
+                .font(.pretendard(size: 12, weight: selectedProvider == provider ? .semibold : .regular))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity)
@@ -97,7 +97,7 @@ struct UsageHistoryView: View {
                 Image(systemName: "chart.xyaxis.line")
                     .foregroundStyle(.secondary)
                 Text("Usage Overview")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.pretendard(size: 13, weight: .medium))
             }
 
             if filteredSnapshots.isEmpty {
@@ -107,7 +107,7 @@ struct UsageHistoryView: View {
             }
 
             Text(dateRange)
-                .font(.system(size: 10))
+                .font(.pretendard(size: 10))
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity)
         }
@@ -119,13 +119,13 @@ struct UsageHistoryView: View {
     private var emptyChartView: some View {
         VStack(spacing: 8) {
             Image(systemName: "chart.line.downtrend.xyaxis")
-                .font(.system(size: 30))
+                .font(.pretendard(size: 30))
                 .foregroundStyle(.secondary)
             Text("No data in selected range")
-                .font(.system(size: 12))
+                .font(.pretendard(size: 12))
                 .foregroundStyle(.secondary)
             Text("Usage data is recorded automatically every 90 seconds")
-                .font(.system(size: 10))
+                .font(.pretendard(size: 10))
                 .foregroundStyle(.tertiary)
         }
         .frame(height: 200)
@@ -182,7 +182,7 @@ struct UsageHistoryView: View {
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3]))
                 AxisValueLabel {
                     if let v = value.as(Int.self) {
-                        Text("\(v)%").font(.system(size: 9))
+                        Text("\(v)%").font(.pretendard(size: 9))
                     }
                 }
             }
@@ -190,7 +190,7 @@ struct UsageHistoryView: View {
         .chartXAxis {
             AxisMarks { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
-                AxisValueLabel(format: xAxisFormat).font(.system(size: 9))
+                AxisValueLabel(format: xAxisFormat).font(.pretendard(size: 9))
             }
         }
         .frame(height: 220)
@@ -233,7 +233,7 @@ struct UsageHistoryView: View {
             } else {
                 RoundedRectangle(cornerRadius: 1).fill(color).frame(width: 16, height: 2)
             }
-            Text(label).font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(label).font(.pretendard(size: 10)).foregroundStyle(.secondary)
         }
     }
 
@@ -242,7 +242,7 @@ struct UsageHistoryView: View {
     private var metricToggles: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Metrics to Display")
-                .font(.system(size: 11, weight: .medium))
+                .font(.pretendard(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
@@ -252,7 +252,7 @@ struct UsageHistoryView: View {
 
             if !availableModels.isEmpty {
                 Text("By Model")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.pretendard(size: 10, weight: .medium))
                     .foregroundStyle(.tertiary)
 
                 FlowLayout(spacing: 8) {
@@ -272,7 +272,7 @@ struct UsageHistoryView: View {
                                     .fill(isSelected ? color : .gray.opacity(0.3))
                                     .frame(width: 6, height: 6)
                                 Text(model.displayName)
-                                    .font(.system(size: 11))
+                                    .font(.pretendard(size: 11))
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
@@ -322,7 +322,7 @@ struct ToggleChip: View {
                     .fill(isOn ? color : .gray.opacity(0.3))
                     .frame(width: 6, height: 6)
                 Text(label)
-                    .font(.system(size: 11))
+                    .font(.pretendard(size: 11))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)

@@ -19,13 +19,13 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("LLM Token Bar")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.pretendard(size: 14, weight: .bold))
 
                 Spacer()
 
                 Button(action: { onOpenSettings() }) {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 12))
+                        .font(.pretendard(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -37,7 +37,7 @@ struct PopoverView: View {
                             .frame(width: 14, height: 14)
                     } else {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 12))
+                            .font(.pretendard(size: 12))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -53,7 +53,7 @@ struct PopoverView: View {
                 Text(manager.syncStatus.isConnected
                      ? "All Systems Operational"
                      : "Disconnected")
-                    .font(.system(size: 11))
+                    .font(.pretendard(size: 11))
                     .foregroundStyle(.secondary)
             }
         }
@@ -92,7 +92,7 @@ struct PopoverView: View {
     private var modelBreakdownView: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Token Usage (Last 7 Days)")
-                .font(.system(size: 11, weight: .medium))
+                .font(.pretendard(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
 
             ForEach(tokenStats.recentModelUsages) { entry in
@@ -110,10 +110,10 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 4) {
                     Image(systemName: "cpu")
-                        .font(.system(size: 10))
+                        .font(.pretendard(size: 10))
                         .foregroundStyle(.green)
                     Text("OpenAI Codex")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.pretendard(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
 
@@ -146,10 +146,10 @@ struct PopoverView: View {
         HStack(spacing: 6) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
-                .font(.system(size: 11))
+                .font(.pretendard(size: 11))
 
             Text(message)
-                .font(.system(size: 11))
+                .font(.pretendard(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
         }
@@ -162,15 +162,15 @@ struct PopoverView: View {
     private var disconnectedView: some View {
         VStack(spacing: 8) {
             Image(systemName: "link.badge.plus")
-                .font(.system(size: 24))
+                .font(.pretendard(size: 24))
                 .foregroundStyle(.secondary)
 
             Text("Please log in to Claude CLI")
-                .font(.system(size: 12))
+                .font(.pretendard(size: 12))
                 .foregroundStyle(.secondary)
 
             Text("~/.claude/.credentials.json file is required")
-                .font(.system(size: 10))
+                .font(.pretendard(size: 10))
                 .foregroundStyle(.tertiary)
         }
         .padding(20)

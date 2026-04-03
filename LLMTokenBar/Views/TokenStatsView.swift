@@ -143,7 +143,7 @@ struct TokenStatsView: View {
                 ProgressView()
                     .controlSize(.large)
                 Text("Loading statistics...")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.pretendard(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
             }
             .padding(24)
@@ -159,7 +159,7 @@ struct TokenStatsView: View {
                 Text("Token Usage")
                     .font(.title2.bold())
                 Text("Token usage statistics by model (local data)")
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -167,11 +167,11 @@ struct TokenStatsView: View {
             Toggle("Include Cache", isOn: $includeCacheTokens)
                 .toggleStyle(.switch)
                 .controlSize(.small)
-                .font(.system(size: 11))
+                .font(.pretendard(size: 11))
 
             Button(action: { service.reload() }) {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
             }
             .buttonStyle(.plain)
         }
@@ -204,18 +204,18 @@ struct TokenStatsView: View {
             HStack {
                 Image(systemName: "clock.fill")
                     .foregroundStyle(.orange)
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
                 Text("Today's Usage")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.pretendard(size: 13, weight: .medium))
                 Spacer()
                 Text(formatTokenCount(todayTotalTokens))
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(.pretendardMonospaced(size: 13, weight: .bold))
                     .foregroundStyle(.orange)
             }
 
             if todayTokensByModel.isEmpty {
                 Text("No usage today")
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 4)
@@ -226,10 +226,10 @@ struct TokenStatsView: View {
                             .fill(Self.colorForModelId(item.modelId))
                             .frame(width: 8, height: 8)
                         Text(item.modelId)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.pretendard(size: 11, weight: .medium))
                         Spacer()
                         Text(formatTokenCount(item.tokens))
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .font(.pretendardMonospaced(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -247,7 +247,7 @@ struct TokenStatsView: View {
             ForEach(Self.providerFilters, id: \.id) { filter in
                 Button(action: { selectedProvider = filter.id }) {
                     Text(filter.label)
-                        .font(.system(size: 12, weight: selectedProvider == filter.id ? .semibold : .regular))
+                        .font(.pretendard(size: 12, weight: selectedProvider == filter.id ? .semibold : .regular))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
                         .frame(maxWidth: .infinity)
@@ -289,12 +289,12 @@ struct TokenStatsView: View {
             if currentChartData.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "chart.bar.xaxis")
-                        .font(.system(size: 28))
+                        .font(.pretendard(size: 28))
                         .foregroundStyle(.secondary)
                     Text(chartTimeRange == .daily
                          ? "No data for \(monthLabel)"
                          : "No data")
-                        .font(.system(size: 12))
+                        .font(.pretendard(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 .frame(height: 300)
@@ -327,7 +327,7 @@ struct TokenStatsView: View {
                 AxisValueLabel {
                     if let v = value.as(Int.self) {
                         Text(formatTokenCount(v))
-                            .font(.system(size: 9))
+                            .font(.pretendard(size: 9))
                     }
                 }
             }
@@ -336,7 +336,7 @@ struct TokenStatsView: View {
             AxisMarks(values: .stride(by: .day, count: 5)) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
                 AxisValueLabel(format: .dateTime.month().day())
-                    .font(.system(size: 9))
+                    .font(.pretendard(size: 9))
             }
         }
         .chartLegend(position: .bottom, spacing: 8)
@@ -360,7 +360,7 @@ struct TokenStatsView: View {
                 AxisValueLabel {
                     if let v = value.as(Int.self) {
                         Text(formatTokenCount(v))
-                            .font(.system(size: 9))
+                            .font(.pretendard(size: 9))
                     }
                 }
             }
@@ -369,7 +369,7 @@ struct TokenStatsView: View {
             AxisMarks(values: .stride(by: .month)) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.3))
                 AxisValueLabel(format: .dateTime.year().month(.abbreviated))
-                    .font(.system(size: 9))
+                    .font(.pretendard(size: 9))
             }
         }
         .chartLegend(position: .bottom, spacing: 8)
@@ -380,17 +380,17 @@ struct TokenStatsView: View {
         HStack(spacing: 4) {
             Button(action: { shiftMonth(-1) }) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 10))
+                    .font(.pretendard(size: 10))
             }
             .buttonStyle(.plain)
 
             Text(monthLabel)
-                .font(.system(size: 12, weight: .medium))
+                .font(.pretendard(size: 12, weight: .medium))
                 .frame(minWidth: 80)
 
             Button(action: { shiftMonth(1) }) {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10))
+                    .font(.pretendard(size: 10))
             }
             .buttonStyle(.plain)
             .disabled(isCurrentMonth)
@@ -422,10 +422,10 @@ struct TokenStatsView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Usage by Model")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.pretendard(size: 13, weight: .medium))
                 Spacer()
                 Text("Total: \(formatTokenCount(filteredTotalTokens))")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.pretendard(size: 12, weight: .medium))
                     .foregroundStyle(.orange)
             }
 
@@ -435,7 +435,7 @@ struct TokenStatsView: View {
 
             if filteredModelSummaries.isEmpty {
                 Text("No model data")
-                    .font(.system(size: 12))
+                    .font(.pretendard(size: 12))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -490,16 +490,16 @@ struct MonthlyModelRow: View {
                 .frame(width: 8, height: 8)
 
             Text(model.displayName)
-                .font(.system(size: 12, weight: .medium))
+                .font(.pretendard(size: 12, weight: .medium))
 
             Text("(\(String(format: "%.1f", percentage))%)")
-                .font(.system(size: 11))
+                .font(.pretendard(size: 11))
                 .foregroundStyle(.secondary)
 
             Spacer()
 
             Text(formatCount(model.totalTokens))
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .font(.pretendardMonospaced(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
