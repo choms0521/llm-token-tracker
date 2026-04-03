@@ -6,6 +6,6 @@ extension Font {
     }
 
     static func pretendardMonospaced(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .custom("PretendardVariable", size: size).weight(weight).monospaced()
+        .custom("PretendardVariable", size: size).weight(weight).monospacedDigit()
     }
 }
