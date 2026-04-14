@@ -13,7 +13,7 @@ final class UsagePollingManager: ObservableObject {
 
     private let claudeAuthService: ClaudeAuthService
     private let claudeUsageService: ClaudeUsageService
-    private let minimaxAuthService: MiniMaxAuthService
+    let minimaxAuth: MiniMaxAuthService
     private let minimaxUsageService: MiniMaxUsageService
     private var pollingTask: Task<Void, Never>?
     private var consecutiveFailures = 0
@@ -36,7 +36,7 @@ final class UsagePollingManager: ObservableObject {
         self.syncStatus = .disconnected(for: .claude)
 
         let mmAuthService = MiniMaxAuthService()
-        self.minimaxAuthService = mmAuthService
+        self.minimaxAuth = mmAuthService
         self.minimaxUsageService = MiniMaxUsageService(authService: mmAuthService)
         self.minimaxUsage = .empty(for: .minimax)
         self.minimaxSyncStatus = .disconnected(for: .minimax)
@@ -90,14 +90,17 @@ final class UsagePollingManager: ObservableObject {
         errorMessage = nil
         minimaxErrorMessage = nil
 
-        // Claude & MiniMax 동시 fetch
-        async let claudeResult: Void = fetchClaude()
-        async let minimaxResult: Void = fetchMiniMax()
-        _ = await (claudeResult, minimaxResult)
+        // Claude & MiniMax 병렬 네트워크 요청 (각각 독립 완료)
+        await fetchClaude()
+        isLoading = false
+
+        // MiniMax는 별도 Task로 실행하여 Claude 폴링을 블로킹하지 않음
+        Task { [weak self] in
+            await self?.fetchMiniMax()
+        }
 
         lastFetchTime = Date()
         isFetching = false
-        isLoading = false
     }
 
     private func fetchClaude() async {
@@ -155,7 +158,7 @@ final class UsagePollingManager: ObservableObject {
     }
 
     private func fetchMiniMax() async {
-        minimaxSyncStatus = await minimaxAuthService.getSyncStatus()
+        minimaxSyncStatus = await minimaxAuth.getSyncStatus()
 
         guard minimaxSyncStatus.isConnected else { return }
 
@@ -163,11 +166,30 @@ final class UsagePollingManager: ObservableObject {
             let usage = try await minimaxUsageService.fetchUsage()
             minimaxUsage = usage
             minimaxConsecutiveFailures = 0
+            minimaxErrorMessage = nil
         } catch {
             minimaxConsecutiveFailures += 1
-            minimaxErrorMessage = error.localizedDescription
-            if minimaxConsecutiveFailures == 1 {
-                minimaxUsage = .empty(for: .minimax)
+
+            let isRateLimited: Bool
+            if case UsageError.rateLimited = error {
+                isRateLimited = true
+            } else {
+                isRateLimited = false
+            }
+
+            if isRateLimited {
+                // Rate limit 시 캐시된 데이터 유지
+                let hasCache = minimaxUsage.sessionUsage != nil
+                if hasCache {
+                    minimaxErrorMessage = "Rate limit - 잠시 후 자동 재시도"
+                } else {
+                    minimaxErrorMessage = error.localizedDescription
+                }
+            } else {
+                minimaxErrorMessage = error.localizedDescription
+                if minimaxConsecutiveFailures == 1 {
+                    minimaxUsage = .empty(for: .minimax)
+                }
             }
         }
     }

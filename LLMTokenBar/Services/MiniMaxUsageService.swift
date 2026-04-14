@@ -4,7 +4,6 @@ import Foundation
 final class MiniMaxUsageService: UsageServiceProtocol {
     let provider = Provider.minimax
     private let authService: MiniMaxAuthService
-    private static let targetModel = "MiniMax-M*"
 
     init(authService: MiniMaxAuthService) {
         self.authService = authService
@@ -12,11 +11,28 @@ final class MiniMaxUsageService: UsageServiceProtocol {
 
     func fetchUsage() async throws -> UsageData {
         let apiKey = try await authService.loadCredentials()
-        return try await fetchWithKey(apiKey)
+
+        do {
+            return try await fetchWithKey(apiKey)
+        } catch UsageError.unauthorized {
+            let reloadedKey = try await authService.reloadCredentials()
+            if reloadedKey != apiKey {
+                return try await fetchWithKey(reloadedKey)
+            }
+            throw UsageError.unauthorized
+        } catch UsageError.rateLimited(let retryAfter) {
+            let reloadedKey = try await authService.reloadCredentials()
+            if reloadedKey != apiKey {
+                return try await fetchWithKey(reloadedKey)
+            }
+            throw UsageError.rateLimited(retryAfter: retryAfter)
+        }
     }
 
     private func fetchWithKey(_ apiKey: String, retryCount: Int = 0) async throws -> UsageData {
-        let url = URL(string: Constants.MiniMax.usageURL)!
+        guard let url = URL(string: Constants.MiniMax.usageURL) else {
+            throw UsageError.invalidResponse(0)
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -63,14 +79,16 @@ final class MiniMaxUsageService: UsageServiceProtocol {
             )
         }
 
-        guard let model = response.modelRemains.first(where: { $0.modelName == Self.targetModel }) else {
+        guard let model = response.modelRemains.first(where: {
+            $0.modelName.hasPrefix(Constants.MiniMax.targetModelPrefix)
+        }) else {
             return .empty(for: .minimax)
         }
 
         let intervalUsed = model.currentIntervalTotalCount - model.currentIntervalUsageCount
         let sessionUsage = UsageEntry(
             label: String(localized: "Session Usage"),
-            sublabel: "MiniMax-M* (\(intervalUsed)/\(model.currentIntervalTotalCount))",
+            sublabel: "\(model.modelName) (\(intervalUsed)/\(model.currentIntervalTotalCount))",
             utilization: model.intervalUtilization,
             resetsAt: model.intervalResetsAt
         )
@@ -78,7 +96,7 @@ final class MiniMaxUsageService: UsageServiceProtocol {
         let weeklyUsed = model.currentWeeklyTotalCount - model.currentWeeklyUsageCount
         let weeklyUsage = UsageEntry(
             label: String(localized: "Weekly Usage"),
-            sublabel: "MiniMax-M* (\(weeklyUsed)/\(model.currentWeeklyTotalCount))",
+            sublabel: "\(model.modelName) (\(weeklyUsed)/\(model.currentWeeklyTotalCount))",
             utilization: model.weeklyUtilization,
             resetsAt: model.weeklyResetsAt
         )

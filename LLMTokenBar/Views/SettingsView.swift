@@ -109,7 +109,11 @@ struct SettingsView: View {
         case .openai:
             OpenAISettingsView()
         case .minimax:
-            MiniMaxSettingsView(syncStatus: manager.minimaxSyncStatus)
+            MiniMaxSettingsView(
+                syncStatus: manager.minimaxSyncStatus,
+                authService: manager.minimaxAuth,
+                onResync: { await manager.resync() }
+            )
         case .display:
             ProviderDisplaySettingsView(config: displayConfig)
         case .history:

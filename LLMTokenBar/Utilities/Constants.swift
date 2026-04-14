@@ -27,12 +27,17 @@ enum Constants {
     enum MiniMax {
         static let usageURL = "https://www.minimax.io/v1/api/openplatform/coding_plan/remains"
         static let apiKeyEnvVar = "MINIMAX_API_KEY"
+        static let targetModelPrefix = "MiniMax-M"
+        static let modelPrefixes = ["minimax", "hailuo"]
     }
+
+    // Keychain 계정에 MiniMax 추가
 
     enum Keychain {
         static let serviceName = "com.llmtokenbar.credentials"
         static let claudeAccount = "claude-oauth"
         static let geminiAccount = "gemini-apikey"
+        static let minimaxAccount = "minimax-apikey"
     }
 
     enum UI {

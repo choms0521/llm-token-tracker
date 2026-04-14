@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "MiniMaxAuth")
 
 @MainActor
 final class MiniMaxAuthService: AuthServiceProtocol {
@@ -13,12 +16,22 @@ final class MiniMaxAuthService: AuthServiceProtocol {
     }
 
     func reloadCredentials() async throws -> String {
-        guard let apiKey = ProcessInfo.processInfo.environment[Constants.MiniMax.apiKeyEnvVar],
-              !apiKey.isEmpty else {
-            throw MiniMaxError.apiKeyNotFound
+        // 1순위: Keychain
+        if let apiKey = loadFromKeychain(), !apiKey.isEmpty {
+            cachedApiKey = apiKey
+            return apiKey
         }
-        cachedApiKey = apiKey
-        return apiKey
+
+        // 2순위: 환경변수 (fallback, 터미널 실행 시)
+        if let envKey = ProcessInfo.processInfo.environment[Constants.MiniMax.apiKeyEnvVar],
+           !envKey.isEmpty {
+            // 환경변수에서 읽은 키를 Keychain에 저장
+            saveToKeychain(envKey)
+            cachedApiKey = envKey
+            return envKey
+        }
+
+        throw MiniMaxError.apiKeyNotFound
     }
 
     func getSyncStatus() async -> SyncStatus {
@@ -38,6 +51,42 @@ final class MiniMaxAuthService: AuthServiceProtocol {
             return .disconnected(for: .minimax)
         }
     }
+
+    func saveApiKey(_ apiKey: String) {
+        saveToKeychain(apiKey)
+        cachedApiKey = apiKey
+    }
+
+    func clearApiKey() {
+        try? KeychainService.shared.delete(
+            service: Constants.Keychain.serviceName,
+            account: Constants.Keychain.minimaxAccount
+        )
+        cachedApiKey = nil
+    }
+
+    // MARK: - Keychain
+
+    private func loadFromKeychain() -> String? {
+        guard let data = try? KeychainService.shared.load(
+            service: Constants.Keychain.serviceName,
+            account: Constants.Keychain.minimaxAccount
+        ) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private func saveToKeychain(_ apiKey: String) {
+        guard let data = apiKey.data(using: .utf8) else { return }
+        do {
+            try KeychainService.shared.save(
+                data,
+                service: Constants.Keychain.serviceName,
+                account: Constants.Keychain.minimaxAccount
+            )
+        } catch {
+            logger.error("Keychain 저장 실패: \(error.localizedDescription)")
+        }
+    }
 }
 
 enum MiniMaxError: LocalizedError {
@@ -47,7 +96,7 @@ enum MiniMaxError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .apiKeyNotFound:
-            return "MINIMAX_API_KEY environment variable not set"
+            return "MiniMax API key not configured"
         case .apiError(let code, let message):
             return "MiniMax API error (\(code)): \(message)"
         }

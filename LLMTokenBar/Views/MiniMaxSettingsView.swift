@@ -2,6 +2,11 @@ import SwiftUI
 
 struct MiniMaxSettingsView: View {
     let syncStatus: SyncStatus
+    let authService: MiniMaxAuthService
+    var onResync: () async -> Void = {}
+
+    @State private var apiKeyInput = ""
+    @State private var isSaving = false
 
     var body: some View {
         ScrollView {
@@ -9,16 +14,17 @@ struct MiniMaxSettingsView: View {
                 Text("MiniMax API")
                     .font(.title2.bold())
 
-                Text("Environment variable based authentication")
+                Text("API key based authentication")
                     .foregroundStyle(.secondary)
 
                 syncStatusBanner
 
                 if syncStatus.isConnected {
                     accountDetailsView
-                } else {
-                    disconnectedGuideView
+                    actionButtons
                 }
+
+                apiKeyInputView
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -67,34 +73,71 @@ struct MiniMaxSettingsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var disconnectedGuideView: some View {
+    private var actionButtons: some View {
+        HStack(spacing: 12) {
+            Button(action: {
+                Task { await onResync() }
+            }) {
+                Label("Resync", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.purple)
+
+            Button(action: {
+                authService.clearApiKey()
+                Task { await onResync() }
+            }) {
+                Label("Remove", systemImage: "trash")
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+        }
+    }
+
+    private var apiKeyInputView: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 6) {
-                Image(systemName: "info.circle.fill")
-                    .foregroundStyle(.blue)
+            HStack(spacing: 6) {
+                Image(systemName: syncStatus.isConnected ? "key.fill" : "key")
+                    .foregroundStyle(.purple)
                     .font(.pretendard(size: 12))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("MINIMAX_API_KEY environment variable required")
-                        .font(.pretendard(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    Text("Set the environment variable and restart the app")
-                        .font(.pretendard(size: 10))
-                        .foregroundStyle(.tertiary)
-                }
+                Text(syncStatus.isConnected ? "Update API Key" : "Enter API Key")
+                    .font(.pretendard(size: 12, weight: .medium))
             }
 
-            Text("export MINIMAX_API_KEY=\"your-api-key\"")
-                .font(.system(size: 11, design: .monospaced))
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.black.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .textSelection(.enabled)
+            HStack(spacing: 8) {
+                SecureField("sk-cp-...", text: $apiKeyInput)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12, design: .monospaced))
+
+                Button(action: {
+                    guard !apiKeyInput.isEmpty else { return }
+                    isSaving = true
+                    authService.saveApiKey(apiKeyInput)
+                    apiKeyInput = ""
+                    Task {
+                        await onResync()
+                        isSaving = false
+                    }
+                }) {
+                    if isSaving {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 14, height: 14)
+                    } else {
+                        Text("Save")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.purple)
+                .disabled(apiKeyInput.isEmpty || isSaving)
+            }
+
+            Text("API key is securely stored in Keychain")
+                .font(.pretendard(size: 10))
+                .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(.blue.opacity(0.05))
+        .background(.purple.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

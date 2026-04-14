@@ -17,7 +17,7 @@ final class TokenStatsService: ObservableObject {
     private var currentReloadTask: Task<Void, Never>?
 
     private static let cacheInterval: TimeInterval = 3600 // 1시간
-    private static let cachePath: String = {
+    private static let defaultCachePath: String = {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
@@ -25,16 +25,21 @@ final class TokenStatsService: ObservableObject {
         try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
         return appSupport.appendingPathComponent("token-stats-cache.json").path
     }()
+    private let cachePath: String?
 
     init(
         claudeParser: ClaudeSessionParser = ClaudeSessionParser(),
         geminiParser: GeminiSessionParser = GeminiSessionParser(),
-        codexParser: CodexSessionParser = CodexSessionParser()
+        codexParser: CodexSessionParser = CodexSessionParser(),
+        cachePath: String? = defaultCachePath
     ) {
         self.claudeParser = claudeParser
         self.geminiParser = geminiParser
         self.codexParser = codexParser
-        loadCache()
+        self.cachePath = cachePath
+        if cachePath != nil {
+            loadCache()
+        }
     }
 
     /// 캐시가 유효하면 스킵, 만료되었으면 파싱
@@ -80,6 +85,9 @@ final class TokenStatsService: ObservableObject {
     // MARK: - Cache
 
     private func saveCache() {
+        guard let cachePath else { return }
+        let dir = URL(fileURLWithPath: cachePath).deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let cache = TokenStatsCache(
             lastSyncedAt: lastSyncedAt ?? Date(),
             dailyTokens: dailyTokens,
@@ -89,12 +97,13 @@ final class TokenStatsService: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(cache) else { return }
-        try? data.write(to: URL(fileURLWithPath: Self.cachePath), options: .atomic)
+        try? data.write(to: URL(fileURLWithPath: cachePath), options: .atomic)
     }
 
     private func loadCache() {
-        guard FileManager.default.fileExists(atPath: Self.cachePath),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: Self.cachePath)) else { return }
+        guard let cachePath,
+              FileManager.default.fileExists(atPath: cachePath),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: cachePath)) else { return }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let cache = try? decoder.decode(TokenStatsCache.self, from: data) else { return }

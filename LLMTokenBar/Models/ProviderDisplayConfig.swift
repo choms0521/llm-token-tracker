@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "ProviderDisplay")
 
 struct ProviderDisplayItem: Identifiable, Codable, Equatable {
     let provider: Provider
@@ -47,8 +50,12 @@ final class ProviderDisplayConfig: ObservableObject {
     }
 
     func save() {
-        guard let data = try? JSONEncoder().encode(items) else { return }
-        UserDefaults.standard.set(data, forKey: Self.storageKey)
+        do {
+            let data = try JSONEncoder().encode(items)
+            UserDefaults.standard.set(data, forKey: Self.storageKey)
+        } catch {
+            logger.error("Provider 설정 저장 실패: \(error.localizedDescription)")
+        }
     }
 
     private static func load() -> [ProviderDisplayItem] {
@@ -57,9 +64,10 @@ final class ProviderDisplayConfig: ObservableObject {
             return defaultItems
         }
 
-        // 새로 추가된 Provider가 있으면 끝에 추가
-        var result = saved
-        for defaultItem in defaultItems where !saved.contains(where: { $0.provider == defaultItem.provider }) {
+        // 삭제된 Provider 필터링 + 새로 추가된 Provider 끝에 추가
+        let validProviders = Set(Provider.allCases)
+        var result = saved.filter { validProviders.contains($0.provider) }
+        for defaultItem in defaultItems where !result.contains(where: { $0.provider == defaultItem.provider }) {
             result.append(defaultItem)
         }
         return result

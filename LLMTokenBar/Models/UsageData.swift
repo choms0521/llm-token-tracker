@@ -115,6 +115,11 @@ struct MiniMaxModelRemain: Decodable {
         case weeklyRemainsTime = "weekly_remains_time"
     }
 
+    // API 엔드포인트: /coding_plan/remains
+    // usage_count 필드는 API 필드명과 달리 실제로는 '잔여 횟수'를 의미함.
+    // 예: total=4500, usage_count=4500 → 4500번 남음 → 사용률 0%
+    // 실제 API 테스트로 확인된 동작 (2026-04-14)
+
     var intervalUtilization: Double {
         guard currentIntervalTotalCount > 0 else { return 0 }
         let used = currentIntervalTotalCount - currentIntervalUsageCount

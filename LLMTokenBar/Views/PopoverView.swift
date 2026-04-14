@@ -72,7 +72,14 @@ struct PopoverView: View {
                     modelBreakdownView
                 }
 
-                let allDisconnected = !manager.syncStatus.isConnected && !manager.minimaxSyncStatus.isConnected
+                let enabledProviders = displayConfig.enabledProviders()
+                let allDisconnected = enabledProviders.allSatisfy { provider in
+                    switch provider {
+                    case .claude: return !manager.syncStatus.isConnected
+                    case .minimax: return !manager.minimaxSyncStatus.isConnected
+                    default: return true
+                    }
+                }
                 if allDisconnected {
                     disconnectedView
                 }
