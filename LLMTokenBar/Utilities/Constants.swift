@@ -24,6 +24,11 @@ enum Constants {
         static let configPath = "\(NSHomeDirectory())/.codex"
     }
 
+    enum MiniMax {
+        static let usageURL = "https://www.minimax.io/v1/api/openplatform/coding_plan/remains"
+        static let apiKeyEnvVar = "MINIMAX_API_KEY"
+    }
+
     enum Keychain {
         static let serviceName = "com.llmtokenbar.credentials"
         static let claudeAccount = "claude-oauth"

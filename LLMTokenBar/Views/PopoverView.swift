@@ -77,6 +77,8 @@ struct PopoverView: View {
 
                 codexRateLimitView
 
+                minimaxUsageView
+
                 if !tokenStats.recentModelUsages.isEmpty {
                     modelBreakdownView
                 }
@@ -137,6 +139,34 @@ struct PopoverView: View {
                         utilization: isReset ? 0 : (secondary.usedPercent ?? 0),
                         resetsAt: isReset ? nil : resetDate
                     ))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var minimaxUsageView: some View {
+        if manager.minimaxSyncStatus.isConnected {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.pretendard(size: 10))
+                        .foregroundStyle(.purple)
+                    Text("MiniMax")
+                        .font(.pretendard(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                if let error = manager.minimaxErrorMessage {
+                    errorBanner(error)
+                }
+
+                if let session = manager.minimaxUsage.sessionUsage {
+                    UsageCardView(entry: session)
+                }
+
+                if let weekly = manager.minimaxUsage.weeklyUsage {
+                    UsageCardView(entry: weekly)
                 }
             }
         }

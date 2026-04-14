@@ -4,12 +4,17 @@ import Combine
 @MainActor
 final class UsagePollingManager: ObservableObject {
     @Published var claudeUsage: UsageData
+    @Published var minimaxUsage: UsageData
     @Published var syncStatus: SyncStatus
+    @Published var minimaxSyncStatus: SyncStatus
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var minimaxErrorMessage: String?
 
     private let claudeAuthService: ClaudeAuthService
     private let claudeUsageService: ClaudeUsageService
+    private let minimaxAuthService: MiniMaxAuthService
+    private let minimaxUsageService: MiniMaxUsageService
     private var pollingTask: Task<Void, Never>?
     private var consecutiveFailures = 0
     private var lastError: Error?
@@ -18,6 +23,7 @@ final class UsagePollingManager: ObservableObject {
     private var isFetching = false
     private var lastUsageSnapshot: Double?
     private var stableCount = 0
+    private var minimaxConsecutiveFailures = 0
 
     private let minimumFetchInterval: TimeInterval = 60  // 최소 60초 간격
     private let stableThreshold = 3  // 3회 연속 동일하면 안정 상태
@@ -28,6 +34,12 @@ final class UsagePollingManager: ObservableObject {
         self.claudeUsageService = ClaudeUsageService(authService: authService)
         self.claudeUsage = .empty(for: .claude)
         self.syncStatus = .disconnected(for: .claude)
+
+        let mmAuthService = MiniMaxAuthService()
+        self.minimaxAuthService = mmAuthService
+        self.minimaxUsageService = MiniMaxUsageService(authService: mmAuthService)
+        self.minimaxUsage = .empty(for: .minimax)
+        self.minimaxSyncStatus = .disconnected(for: .minimax)
     }
 
     func startPolling() {
@@ -76,7 +88,19 @@ final class UsagePollingManager: ObservableObject {
         isFetching = true
         isLoading = true
         errorMessage = nil
+        minimaxErrorMessage = nil
 
+        // Claude & MiniMax 동시 fetch
+        async let claudeResult: Void = fetchClaude()
+        async let minimaxResult: Void = fetchMiniMax()
+        _ = await (claudeResult, minimaxResult)
+
+        lastFetchTime = Date()
+        isFetching = false
+        isLoading = false
+    }
+
+    private func fetchClaude() async {
         syncStatus = await claudeAuthService.getSyncStatus()
 
         do {
@@ -86,7 +110,6 @@ final class UsagePollingManager: ObservableObject {
             lastError = nil
             rateLimitedUntil = nil
 
-            // 적응형 폴링: 사용량 변화 추적
             let currentUtilization = usage.sessionUsage?.utilization
             if let current = currentUtilization, let last = lastUsageSnapshot,
                abs(current - last) < 0.01 {
@@ -115,7 +138,6 @@ final class UsagePollingManager: ObservableObject {
                     rateLimitedUntil = Date().addingTimeInterval(backoff)
                 }
 
-                // 캐시된 데이터가 있으면 에러 배너 대신 부드러운 메시지
                 let hasCache = claudeUsage.sessionUsage != nil || !claudeUsage.modelUsages.isEmpty
                 if hasCache {
                     let minutes = Int(ceil((rateLimitedUntil?.timeIntervalSinceNow ?? 600) / 60))
@@ -130,10 +152,24 @@ final class UsagePollingManager: ObservableObject {
                 }
             }
         }
+    }
 
-        lastFetchTime = Date()
-        isFetching = false
-        isLoading = false
+    private func fetchMiniMax() async {
+        minimaxSyncStatus = await minimaxAuthService.getSyncStatus()
+
+        guard minimaxSyncStatus.isConnected else { return }
+
+        do {
+            let usage = try await minimaxUsageService.fetchUsage()
+            minimaxUsage = usage
+            minimaxConsecutiveFailures = 0
+        } catch {
+            minimaxConsecutiveFailures += 1
+            minimaxErrorMessage = error.localizedDescription
+            if minimaxConsecutiveFailures == 1 {
+                minimaxUsage = .empty(for: .minimax)
+            }
+        }
     }
 
     private func nextPollInterval() -> TimeInterval {

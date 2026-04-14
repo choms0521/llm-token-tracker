@@ -5,6 +5,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case claude
     case gemini
     case openai
+    case minimax
     case history
     case tokens
     case general
@@ -16,6 +17,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .claude: return "Claude"
         case .gemini: return "Gemini"
         case .openai: return "OpenAI"
+        case .minimax: return "MiniMax"
         case .history: return "History"
         case .tokens: return "Token Stats"
         case .general: return "General"
@@ -27,6 +29,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .claude: return "brain.head.profile"
         case .gemini: return "sparkles"
         case .openai: return "cpu"
+        case .minimax: return "wand.and.stars"
         case .history: return "chart.line.uptrend.xyaxis"
         case .tokens: return "number.square"
         case .general: return "gearshape"
@@ -54,7 +57,7 @@ struct SettingsView: View {
     private var sidebar: some View {
         List(selection: $selectedTab) {
             Section("Credentials") {
-                ForEach([SettingsTab.claude, .gemini, .openai], id: \.self) { tab in
+                ForEach([SettingsTab.claude, .gemini, .openai, .minimax], id: \.self) { tab in
                     Label(tab.localizedName, systemImage: tab.iconName)
                         .tag(tab)
                 }
@@ -99,6 +102,8 @@ struct SettingsView: View {
             GeminiSettingsView()
         case .openai:
             OpenAISettingsView()
+        case .minimax:
+            MiniMaxSettingsView(syncStatus: manager.minimaxSyncStatus)
         case .history:
             UsageHistoryView(historyStore: historyStore)
         case .tokens:
