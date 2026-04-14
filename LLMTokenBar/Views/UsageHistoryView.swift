@@ -306,8 +306,12 @@ struct UsageHistoryView: View {
         case "flash": return .yellow
         case "pro": return .indigo
         case "gpt-4", "gpt-4o": return .mint
-        case "minimax-m*", "minimax": return .purple
-        default: return .gray
+        default:
+            let lowered = name.lowercased()
+            if lowered.hasPrefix("minimax") || lowered.contains("hailuo") {
+                return .purple
+            }
+            return .gray
         }
     }
 }

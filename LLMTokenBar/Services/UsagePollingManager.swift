@@ -90,17 +90,15 @@ final class UsagePollingManager: ObservableObject {
         errorMessage = nil
         minimaxErrorMessage = nil
 
-        // Claude & MiniMax 병렬 네트워크 요청 (각각 독립 완료)
-        await fetchClaude()
-        isLoading = false
-
-        // MiniMax는 별도 Task로 실행하여 Claude 폴링을 블로킹하지 않음
-        Task { [weak self] in
-            await self?.fetchMiniMax()
-        }
+        // Claude & MiniMax 병렬 네트워크 요청
+        // 두 요청이 모두 끝난 뒤에만 로딩/중복 호출 상태를 해제
+        async let claudeFetch: Void = fetchClaude()
+        async let minimaxFetch: Void = fetchMiniMax()
+        _ = await (claudeFetch, minimaxFetch)
 
         lastFetchTime = Date()
         isFetching = false
+        isLoading = false
     }
 
     private func fetchClaude() async {

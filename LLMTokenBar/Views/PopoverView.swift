@@ -77,7 +77,7 @@ struct PopoverView: View {
                     switch provider {
                     case .claude: return !manager.syncStatus.isConnected
                     case .minimax: return !manager.minimaxSyncStatus.isConnected
-                    default: return true
+                    case .openai, .gemini: return false
                     }
                 }
                 if allDisconnected {

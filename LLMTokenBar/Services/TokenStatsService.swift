@@ -17,11 +17,12 @@ final class TokenStatsService: ObservableObject {
     private var currentReloadTask: Task<Void, Never>?
 
     private static let cacheInterval: TimeInterval = 3600 // 1시간
-    private static let defaultCachePath: String = {
-        let appSupport = FileManager.default.urls(
+    private static let defaultCachePath: String? = {
+        guard let baseDir = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
-        ).first!.appendingPathComponent("LLMTokenBar")
+        ).first else { return nil }
+        let appSupport = baseDir.appendingPathComponent("LLMTokenBar")
         try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
         return appSupport.appendingPathComponent("token-stats-cache.json").path
     }()
@@ -86,18 +87,25 @@ final class TokenStatsService: ObservableObject {
 
     private func saveCache() {
         guard let cachePath else { return }
-        let dir = URL(fileURLWithPath: cachePath).deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let cache = TokenStatsCache(
             lastSyncedAt: lastSyncedAt ?? Date(),
             dailyTokens: dailyTokens,
             modelSummaries: modelSummaries,
             totalCost: totalCost
         )
+        Task.detached(priority: .utility) {
+            Self.writeCache(cache, to: cachePath)
+        }
+    }
+
+    private static nonisolated func writeCache(_ cache: TokenStatsCache, to path: String) {
+        let url = URL(fileURLWithPath: path)
+        let dir = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(cache) else { return }
-        try? data.write(to: URL(fileURLWithPath: cachePath), options: .atomic)
+        try? data.write(to: url, options: .atomic)
     }
 
     private func loadCache() {
