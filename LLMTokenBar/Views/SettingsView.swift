@@ -6,6 +6,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case gemini
     case openai
     case minimax
+    case display
     case history
     case tokens
     case general
@@ -18,6 +19,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .gemini: return "Gemini"
         case .openai: return "OpenAI"
         case .minimax: return "MiniMax"
+        case .display: return "Display"
         case .history: return "History"
         case .tokens: return "Token Stats"
         case .general: return "General"
@@ -30,6 +32,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .gemini: return "sparkles"
         case .openai: return "cpu"
         case .minimax: return "wand.and.stars"
+        case .display: return "square.stack.3d.up"
         case .history: return "chart.line.uptrend.xyaxis"
         case .tokens: return "number.square"
         case .general: return "gearshape"
@@ -40,6 +43,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @ObservedObject var manager: UsagePollingManager
     @ObservedObject var historyStore: UsageHistoryStore
+    @ObservedObject var displayConfig: ProviderDisplayConfig
     @State private var selectedTab: SettingsTab = .claude
 
     var body: some View {
@@ -64,6 +68,8 @@ struct SettingsView: View {
             }
 
             Section("Settings") {
+                Label("Display", systemImage: "square.stack.3d.up")
+                    .tag(SettingsTab.display)
                 Label("History", systemImage: "chart.line.uptrend.xyaxis")
                     .tag(SettingsTab.history)
                 Label("Token Stats", systemImage: "number.square")
@@ -104,6 +110,8 @@ struct SettingsView: View {
             OpenAISettingsView()
         case .minimax:
             MiniMaxSettingsView(syncStatus: manager.minimaxSyncStatus)
+        case .display:
+            ProviderDisplaySettingsView(config: displayConfig)
         case .history:
             UsageHistoryView(historyStore: historyStore)
         case .tokens:

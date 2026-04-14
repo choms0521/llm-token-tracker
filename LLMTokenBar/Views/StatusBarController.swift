@@ -8,15 +8,17 @@ final class StatusBarController: NSObject {
     private let manager: UsagePollingManager
     private let historyStore: UsageHistoryStore
     private let tokenStats: TokenStatsService
+    private let displayConfig: ProviderDisplayConfig
     private var settingsWindow: NSWindow?
     private var eventMonitor: Any?
     private var iconObserver: NSObjectProtocol?
     private var animationController: MenuBarAnimationController?
 
-    init(manager: UsagePollingManager, historyStore: UsageHistoryStore, tokenStats: TokenStatsService) {
+    init(manager: UsagePollingManager, historyStore: UsageHistoryStore, tokenStats: TokenStatsService, displayConfig: ProviderDisplayConfig) {
         self.manager = manager
         self.historyStore = historyStore
         self.tokenStats = tokenStats
+        self.displayConfig = displayConfig
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.popover = NSPopover()
         super.init()
@@ -27,7 +29,7 @@ final class StatusBarController: NSObject {
     }
 
     private func setupPopover() {
-        let popoverView = PopoverView(manager: manager, tokenStats: tokenStats, onOpenSettings: { [weak self] in
+        let popoverView = PopoverView(manager: manager, tokenStats: tokenStats, displayConfig: displayConfig, onOpenSettings: { [weak self] in
             self?.openSettings()
         })
 
@@ -145,7 +147,7 @@ final class StatusBarController: NSObject {
             return
         }
 
-        let settingsView = SettingsView(manager: manager, historyStore: historyStore)
+        let settingsView = SettingsView(manager: manager, historyStore: historyStore, displayConfig: displayConfig)
         let hostingController = NSHostingController(rootView: settingsView)
 
         let window = NSWindow(contentViewController: hostingController)

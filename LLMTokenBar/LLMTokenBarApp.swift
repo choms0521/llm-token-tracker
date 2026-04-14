@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var manager: UsagePollingManager?
     private var historyStore: UsageHistoryStore?
     private var tokenStats: TokenStatsService?
+    private var displayConfig: ProviderDisplayConfig?
     private var cancellables = Set<AnyCancellable>()
     private var codexTimer: Timer?
     private let codexParser = CodexSessionParser()
@@ -28,12 +29,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let pollingManager = UsagePollingManager()
         let history = UsageHistoryStore()
         let stats = TokenStatsService()
+        let providerConfig = ProviderDisplayConfig()
         stats.reload()
         self.manager = pollingManager
         self.historyStore = history
         self.tokenStats = stats
+        self.displayConfig = providerConfig
 
-        statusBarController = StatusBarController(manager: pollingManager, historyStore: history, tokenStats: stats)
+        statusBarController = StatusBarController(manager: pollingManager, historyStore: history, tokenStats: stats, displayConfig: providerConfig)
 
         pollingManager.$claudeUsage
             .receive(on: DispatchQueue.main)
@@ -41,6 +44,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.updateStatusBar(usage: usage)
                 self?.tokenStats?.reload()
 
+                if usage.sessionUsage != nil || usage.weeklyUsage != nil {
+                    self?.historyStore?.record(from: usage)
+                }
+            }
+            .store(in: &cancellables)
+
+        pollingManager.$minimaxUsage
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] usage in
                 if usage.sessionUsage != nil || usage.weeklyUsage != nil {
                     self?.historyStore?.record(from: usage)
                 }

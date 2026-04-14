@@ -30,6 +30,7 @@ struct TokenStatsView: View {
         ("claude", "Claude"),
         ("gemini", "Gemini"),
         ("openai", "OpenAI"),
+        ("minimax", "MiniMax"),
     ]
 
     private func matchesProvider(_ modelId: String) -> Bool {
@@ -38,6 +39,9 @@ struct TokenStatsView: View {
         let id = modelId.lowercased()
         if provider == "openai" {
             return id.hasPrefix("gpt") || id.hasPrefix("o1") || id.hasPrefix("o3") || id.hasPrefix("o4") || id.hasPrefix("chatgpt")
+        }
+        if provider == "minimax" {
+            return id.contains("minimax") || id.contains("hailuo")
         }
         return id.contains(provider)
     }
@@ -456,6 +460,7 @@ struct TokenStatsView: View {
         if id.contains("gemini") && id.contains("pro") { return .cyan }
         if id.contains("gpt") { return .green }
         if id.hasPrefix("o1") || id.hasPrefix("o3") || id.hasPrefix("o4") { return .mint }
+        if id.contains("minimax") || id.contains("hailuo") { return .purple }
         return .gray
     }
 

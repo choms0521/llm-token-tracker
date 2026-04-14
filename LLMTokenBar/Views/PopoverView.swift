@@ -3,6 +3,7 @@ import SwiftUI
 struct PopoverView: View {
     @ObservedObject var manager: UsagePollingManager
     @ObservedObject var tokenStats: TokenStatsService
+    @ObservedObject var displayConfig: ProviderDisplayConfig
     var onOpenSettings: () -> Void
     private let codexParser = CodexSessionParser()
 
@@ -63,6 +64,43 @@ struct PopoverView: View {
     private var contentView: some View {
         ScrollView {
             VStack(spacing: 8) {
+                ForEach(displayConfig.items.filter(\.isEnabled)) { item in
+                    providerSection(for: item.provider)
+                }
+
+                if !tokenStats.recentModelUsages.isEmpty {
+                    modelBreakdownView
+                }
+
+                let allDisconnected = !manager.syncStatus.isConnected && !manager.minimaxSyncStatus.isConnected
+                if allDisconnected {
+                    disconnectedView
+                }
+            }
+            .padding(12)
+        }
+    }
+
+    @ViewBuilder
+    private func providerSection(for provider: Provider) -> some View {
+        switch provider {
+        case .claude:
+            claudeSection
+        case .openai:
+            codexRateLimitView
+        case .minimax:
+            minimaxUsageView
+        case .gemini:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var claudeSection: some View {
+        if manager.syncStatus.isConnected {
+            VStack(alignment: .leading, spacing: 6) {
+                providerHeader(name: "Claude", icon: "brain.head.profile", color: .orange)
+
                 if let error = manager.errorMessage {
                     errorBanner(error)
                 }
@@ -74,20 +112,7 @@ struct PopoverView: View {
                 if let weekly = manager.claudeUsage.weeklyUsage {
                     UsageCardView(entry: weekly)
                 }
-
-                codexRateLimitView
-
-                minimaxUsageView
-
-                if !tokenStats.recentModelUsages.isEmpty {
-                    modelBreakdownView
-                }
-
-                if !manager.syncStatus.isConnected {
-                    disconnectedView
-                }
             }
-            .padding(12)
         }
     }
 
@@ -106,18 +131,22 @@ struct PopoverView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
+    private func providerHeader(name: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.pretendard(size: 10))
+                .foregroundStyle(color)
+            Text(name)
+                .font(.pretendard(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+    }
+
     @ViewBuilder
     private var codexRateLimitView: some View {
         if let limits = codexParser.latestRateLimits() {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 4) {
-                    Image(systemName: "cpu")
-                        .font(.pretendard(size: 10))
-                        .foregroundStyle(.green)
-                    Text("OpenAI Codex")
-                        .font(.pretendard(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
+                providerHeader(name: "OpenAI Codex", icon: "cpu", color: .green)
 
                 if let primary = limits.primary {
                     let resetDate = primary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
@@ -148,14 +177,7 @@ struct PopoverView: View {
     private var minimaxUsageView: some View {
         if manager.minimaxSyncStatus.isConnected {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 4) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.pretendard(size: 10))
-                        .foregroundStyle(.purple)
-                    Text("MiniMax")
-                        .font(.pretendard(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
+                providerHeader(name: "MiniMax", icon: "wand.and.stars", color: .purple)
 
                 if let error = manager.minimaxErrorMessage {
                     errorBanner(error)
