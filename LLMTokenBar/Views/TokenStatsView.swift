@@ -158,26 +158,39 @@ struct TokenStatsView: View {
     // MARK: - Header
 
     private var headerView: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Token Usage")
-                    .font(.title2.bold())
-                Text("Token usage statistics by model (local data)")
-                    .font(.pretendard(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Token Usage")
+                        .font(.title2.bold())
+                    Text("Token usage statistics by model (local data)")
+                        .font(.pretendard(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
 
-            Toggle("Include Cache", isOn: $includeCacheTokens)
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .font(.pretendard(size: 11))
+                Toggle("Include Cache", isOn: $includeCacheTokens)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .font(.pretendard(size: 11))
 
-            Button(action: { service.reload() }) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.pretendard(size: 12))
+                Button(action: { service.forceReload() }) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.pretendard(size: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(service.isLoading)
             }
-            .buttonStyle(.plain)
+
+            if let lastSync = service.lastSyncedAt {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.pretendard(size: 10))
+                    Text("Last synced: \(TimeFormatter.syncTimeString(from: lastSync))")
+                        .font(.pretendard(size: 10))
+                }
+                .foregroundStyle(.tertiary)
+            }
         }
     }
 
