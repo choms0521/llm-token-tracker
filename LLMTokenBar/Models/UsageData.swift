@@ -68,6 +68,79 @@ struct ExtraUsage: Decodable {
     }
 }
 
+struct MiniMaxUsageResponse: Decodable {
+    let modelRemains: [MiniMaxModelRemain]
+    let baseResp: MiniMaxBaseResp
+
+    enum CodingKeys: String, CodingKey {
+        case modelRemains = "model_remains"
+        case baseResp = "base_resp"
+    }
+}
+
+struct MiniMaxBaseResp: Decodable {
+    let statusCode: Int
+    let statusMsg: String
+
+    enum CodingKeys: String, CodingKey {
+        case statusCode = "status_code"
+        case statusMsg = "status_msg"
+    }
+}
+
+struct MiniMaxModelRemain: Decodable {
+    let modelName: String
+    let startTime: Int64
+    let endTime: Int64
+    let remainsTime: Int64
+    let currentIntervalTotalCount: Int
+    let currentIntervalUsageCount: Int
+    let currentWeeklyTotalCount: Int
+    let currentWeeklyUsageCount: Int
+    let weeklyStartTime: Int64
+    let weeklyEndTime: Int64
+    let weeklyRemainsTime: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case modelName = "model_name"
+        case startTime = "start_time"
+        case endTime = "end_time"
+        case remainsTime = "remains_time"
+        case currentIntervalTotalCount = "current_interval_total_count"
+        case currentIntervalUsageCount = "current_interval_usage_count"
+        case currentWeeklyTotalCount = "current_weekly_total_count"
+        case currentWeeklyUsageCount = "current_weekly_usage_count"
+        case weeklyStartTime = "weekly_start_time"
+        case weeklyEndTime = "weekly_end_time"
+        case weeklyRemainsTime = "weekly_remains_time"
+    }
+
+    // API 엔드포인트: /coding_plan/remains
+    // usage_count 필드는 API 필드명과 달리 실제로는 '잔여 횟수'를 의미함.
+    // 예: total=4500, usage_count=4500 → 4500번 남음 → 사용률 0%
+    // 실제 API 테스트로 확인된 동작 (2026-04-14)
+
+    var intervalUtilization: Double {
+        guard currentIntervalTotalCount > 0 else { return 0 }
+        let used = currentIntervalTotalCount - currentIntervalUsageCount
+        return Double(used) / Double(currentIntervalTotalCount) * 100.0
+    }
+
+    var weeklyUtilization: Double {
+        guard currentWeeklyTotalCount > 0 else { return 0 }
+        let used = currentWeeklyTotalCount - currentWeeklyUsageCount
+        return Double(used) / Double(currentWeeklyTotalCount) * 100.0
+    }
+
+    var intervalResetsAt: Date {
+        Date(timeIntervalSince1970: Double(endTime) / 1000.0)
+    }
+
+    var weeklyResetsAt: Date {
+        Date(timeIntervalSince1970: Double(weeklyEndTime) / 1000.0)
+    }
+}
+
 struct UsageBucket: Decodable {
     let utilization: Double
     let resetsAt: String?

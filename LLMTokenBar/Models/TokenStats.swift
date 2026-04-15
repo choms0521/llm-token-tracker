@@ -36,7 +36,7 @@ struct ModelTokenUsage: Decodable {
     var displayName: String { "" } // set externally
 }
 
-struct ModelSummary: Identifiable {
+struct ModelSummary: Identifiable, Codable {
     let id: String // model ID e.g. "claude-opus-4-6"
     let displayName: String
     let inputTokens: Int
@@ -68,7 +68,7 @@ struct ModelSummary: Identifiable {
     }
 }
 
-struct DailyTokenEntry: Identifiable {
+struct DailyTokenEntry: Identifiable, Codable {
     let id: String
     let date: Date
     let modelId: String
@@ -88,4 +88,11 @@ struct DailyTokenEntry: Identifiable {
     func effectiveTokens(includeCache: Bool) -> Int {
         includeCache ? tokens : tokensNoCache
     }
+}
+
+struct TokenStatsCache: Codable {
+    let lastSyncedAt: Date
+    let dailyTokens: [DailyTokenEntry]
+    let modelSummaries: [ModelSummary]
+    let totalCost: Double
 }

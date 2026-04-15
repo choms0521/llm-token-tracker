@@ -3,6 +3,7 @@ import SwiftUI
 struct PopoverView: View {
     @ObservedObject var manager: UsagePollingManager
     @ObservedObject var tokenStats: TokenStatsService
+    @ObservedObject var displayConfig: ProviderDisplayConfig
     var onOpenSettings: () -> Void
     private let codexParser = CodexSessionParser()
 
@@ -63,6 +64,52 @@ struct PopoverView: View {
     private var contentView: some View {
         ScrollView {
             VStack(spacing: 8) {
+                ForEach(displayConfig.items.filter(\.isEnabled)) { item in
+                    providerSection(for: item.provider)
+                }
+
+                if !tokenStats.recentModelUsages.isEmpty {
+                    modelBreakdownView
+                }
+
+                let enabledProviders = displayConfig.enabledProviders()
+                let disconnectedProviders = enabledProviders.filter { provider in
+                    switch provider {
+                    case .claude: return !manager.syncStatus.isConnected
+                    case .minimax: return !manager.minimaxSyncStatus.isConnected
+                    case .openai, .gemini: return false
+                    }
+                }
+                if !enabledProviders.isEmpty && disconnectedProviders.count == enabledProviders.count {
+                    ForEach(disconnectedProviders, id: \.self) { provider in
+                        disconnectedHint(for: provider)
+                    }
+                }
+            }
+            .padding(12)
+        }
+    }
+
+    @ViewBuilder
+    private func providerSection(for provider: Provider) -> some View {
+        switch provider {
+        case .claude:
+            claudeSection
+        case .openai:
+            codexRateLimitView
+        case .minimax:
+            minimaxUsageView
+        case .gemini:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var claudeSection: some View {
+        if manager.syncStatus.isConnected {
+            VStack(alignment: .leading, spacing: 6) {
+                providerHeader(name: "Claude", icon: "brain.head.profile", color: .orange)
+
                 if let error = manager.errorMessage {
                     errorBanner(error)
                 }
@@ -74,18 +121,7 @@ struct PopoverView: View {
                 if let weekly = manager.claudeUsage.weeklyUsage {
                     UsageCardView(entry: weekly)
                 }
-
-                codexRateLimitView
-
-                if !tokenStats.recentModelUsages.isEmpty {
-                    modelBreakdownView
-                }
-
-                if !manager.syncStatus.isConnected {
-                    disconnectedView
-                }
             }
-            .padding(12)
         }
     }
 
@@ -104,18 +140,22 @@ struct PopoverView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
+    private func providerHeader(name: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.pretendard(size: 10))
+                .foregroundStyle(color)
+            Text(name)
+                .font(.pretendard(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+    }
+
     @ViewBuilder
     private var codexRateLimitView: some View {
         if let limits = codexParser.latestRateLimits() {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 4) {
-                    Image(systemName: "cpu")
-                        .font(.pretendard(size: 10))
-                        .foregroundStyle(.green)
-                    Text("OpenAI Codex")
-                        .font(.pretendard(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
+                providerHeader(name: "OpenAI Codex", icon: "cpu", color: .green)
 
                 if let primary = limits.primary {
                     let resetDate = primary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
@@ -142,6 +182,27 @@ struct PopoverView: View {
         }
     }
 
+    @ViewBuilder
+    private var minimaxUsageView: some View {
+        if manager.minimaxSyncStatus.isConnected {
+            VStack(alignment: .leading, spacing: 6) {
+                providerHeader(name: "MiniMax", icon: "wand.and.stars", color: .purple)
+
+                if let error = manager.minimaxErrorMessage {
+                    errorBanner(error)
+                }
+
+                if let session = manager.minimaxUsage.sessionUsage {
+                    UsageCardView(entry: session)
+                }
+
+                if let weekly = manager.minimaxUsage.weeklyUsage {
+                    UsageCardView(entry: weekly)
+                }
+            }
+        }
+    }
+
     private func errorBanner(_ message: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -159,19 +220,32 @@ struct PopoverView: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
-    private var disconnectedView: some View {
+    private func disconnectedHint(for provider: Provider) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: "link.badge.plus")
+            Image(systemName: provider.iconName)
                 .font(.pretendard(size: 24))
                 .foregroundStyle(.secondary)
 
-            Text("Please log in to Claude CLI")
-                .font(.pretendard(size: 12))
-                .foregroundStyle(.secondary)
-
-            Text("~/.claude/.credentials.json file is required")
-                .font(.pretendard(size: 10))
-                .foregroundStyle(.tertiary)
+            switch provider {
+            case .claude:
+                Text("Please log in to Claude CLI")
+                    .font(.pretendard(size: 12))
+                    .foregroundStyle(.secondary)
+                Text("~/.claude/.credentials.json file is required")
+                    .font(.pretendard(size: 10))
+                    .foregroundStyle(.tertiary)
+            case .minimax:
+                Text("MiniMax API key not configured")
+                    .font(.pretendard(size: 12))
+                    .foregroundStyle(.secondary)
+                Text("Set API key in Settings > MiniMax")
+                    .font(.pretendard(size: 10))
+                    .foregroundStyle(.tertiary)
+            default:
+                Text("\(provider.displayName) not connected")
+                    .font(.pretendard(size: 12))
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity)

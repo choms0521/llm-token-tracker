@@ -67,6 +67,7 @@ struct UsageHistoryView: View {
         HStack(spacing: 0) {
             providerTab(.claude, label: Provider.claude.displayName)
             providerTab(.openai, label: Provider.openai.displayName)
+            providerTab(.minimax, label: Provider.minimax.displayName)
         }
         .background(.quaternary.opacity(0.3))
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -305,7 +306,12 @@ struct UsageHistoryView: View {
         case "flash": return .yellow
         case "pro": return .indigo
         case "gpt-4", "gpt-4o": return .mint
-        default: return .gray
+        default:
+            let lowered = name.lowercased()
+            if lowered.hasPrefix("minimax") || lowered.contains("hailuo") {
+                return .purple
+            }
+            return .gray
         }
     }
 }

@@ -9,23 +9,51 @@ final class TokenStatsService: ObservableObject {
     @Published var dailyTokens: [DailyTokenEntry] = []
     @Published var totalCost: Double = 0
     @Published var isLoading: Bool = false
+    @Published var lastSyncedAt: Date?
 
     private let claudeParser: ClaudeSessionParser
     private let geminiParser: GeminiSessionParser
     private let codexParser: CodexSessionParser
     private var currentReloadTask: Task<Void, Never>?
 
+    private static let cacheInterval: TimeInterval = 3600 // 1시간
+    private static let defaultCachePath: String? = {
+        guard let baseDir = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else { return nil }
+        let appSupport = baseDir.appendingPathComponent("LLMTokenBar")
+        try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
+        return appSupport.appendingPathComponent("token-stats-cache.json").path
+    }()
+    private let cachePath: String?
+
     init(
         claudeParser: ClaudeSessionParser = ClaudeSessionParser(),
         geminiParser: GeminiSessionParser = GeminiSessionParser(),
-        codexParser: CodexSessionParser = CodexSessionParser()
+        codexParser: CodexSessionParser = CodexSessionParser(),
+        cachePath: String? = defaultCachePath
     ) {
         self.claudeParser = claudeParser
         self.geminiParser = geminiParser
         self.codexParser = codexParser
+        self.cachePath = cachePath
+        if cachePath != nil {
+            loadCache()
+        }
     }
 
+    /// 캐시가 유효하면 스킵, 만료되었으면 파싱
     func reload() {
+        if let lastSync = lastSyncedAt,
+           Date().timeIntervalSince(lastSync) < Self.cacheInterval {
+            return
+        }
+        forceReload()
+    }
+
+    /// 캐시 무시하고 강제 파싱
+    func forceReload() {
         currentReloadTask?.cancel()
         isLoading = true
 
@@ -38,7 +66,6 @@ final class TokenStatsService: ObservableObject {
                 codex: codexParser
             )
 
-            // 최소 1초간 로딩 표시하여 UI 피드백 보장
             let elapsed = ContinuousClock.now - startTime
             if elapsed < .milliseconds(500) {
                 try? await Task.sleep(for: .milliseconds(500) - elapsed)
@@ -49,9 +76,49 @@ final class TokenStatsService: ObservableObject {
                 self.dailyTokens = result.tokens
                 self.modelSummaries = result.summaries
                 self.totalCost = result.cost
+                self.lastSyncedAt = Date()
                 self.isLoading = false
+                self.saveCache()
             }
         }
+    }
+
+    // MARK: - Cache
+
+    private func saveCache() {
+        guard let cachePath else { return }
+        let cache = TokenStatsCache(
+            lastSyncedAt: lastSyncedAt ?? Date(),
+            dailyTokens: dailyTokens,
+            modelSummaries: modelSummaries,
+            totalCost: totalCost
+        )
+        Task.detached(priority: .utility) {
+            Self.writeCache(cache, to: cachePath)
+        }
+    }
+
+    private static nonisolated func writeCache(_ cache: TokenStatsCache, to path: String) {
+        let url = URL(fileURLWithPath: path)
+        let dir = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(cache) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    private func loadCache() {
+        guard let cachePath,
+              FileManager.default.fileExists(atPath: cachePath),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: cachePath)) else { return }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let cache = try? decoder.decode(TokenStatsCache.self, from: data) else { return }
+        dailyTokens = cache.dailyTokens
+        modelSummaries = cache.modelSummaries
+        totalCost = cache.totalCost
+        lastSyncedAt = cache.lastSyncedAt
     }
 
     private static nonisolated func parseInBackground(

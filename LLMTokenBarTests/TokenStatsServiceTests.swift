@@ -29,9 +29,10 @@ final class TokenStatsServiceTests: XCTestCase {
         let service = TokenStatsService(
             claudeParser: ClaudeSessionParser(basePath: claudeDir.path),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
-            codexParser: CodexSessionParser(basePath: "/nonexistent")
+            codexParser: CodexSessionParser(basePath: "/nonexistent"),
+            cachePath: nil
         )
-        service.reload()
+        service.forceReload()
 
         let loaded = expectation(description: "Token stats reloaded")
         Task { @MainActor in
@@ -64,9 +65,10 @@ final class TokenStatsServiceTests: XCTestCase {
         let service = TokenStatsService(
             claudeParser: ClaudeSessionParser(basePath: claudeDir.path),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
-            codexParser: CodexSessionParser(basePath: "/nonexistent")
+            codexParser: CodexSessionParser(basePath: "/nonexistent"),
+            cachePath: nil
         )
-        service.reload()
+        service.forceReload()
 
         let loaded = expectation(description: "Dedup reload completed")
         Task { @MainActor in
@@ -88,7 +90,8 @@ final class TokenStatsServiceTests: XCTestCase {
         let service = TokenStatsService(
             claudeParser: ClaudeSessionParser(basePath: "/nonexistent"),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
-            codexParser: CodexSessionParser(basePath: "/nonexistent")
+            codexParser: CodexSessionParser(basePath: "/nonexistent"),
+            cachePath: nil
         )
 
         service.modelSummaries = [
@@ -107,7 +110,7 @@ final class TokenStatsServiceTests: XCTestCase {
         ]
         service.totalCost = 99
 
-        service.reload()
+        service.forceReload()
 
         let loaded = expectation(description: "Clear state reload completed")
         Task { @MainActor in
