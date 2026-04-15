@@ -73,15 +73,17 @@ struct PopoverView: View {
                 }
 
                 let enabledProviders = displayConfig.enabledProviders()
-                let allDisconnected = enabledProviders.allSatisfy { provider in
+                let disconnectedProviders = enabledProviders.filter { provider in
                     switch provider {
                     case .claude: return !manager.syncStatus.isConnected
                     case .minimax: return !manager.minimaxSyncStatus.isConnected
                     case .openai, .gemini: return false
                     }
                 }
-                if allDisconnected {
-                    disconnectedView
+                if !enabledProviders.isEmpty && disconnectedProviders.count == enabledProviders.count {
+                    ForEach(disconnectedProviders, id: \.self) { provider in
+                        disconnectedHint(for: provider)
+                    }
                 }
             }
             .padding(12)
@@ -218,19 +220,32 @@ struct PopoverView: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
-    private var disconnectedView: some View {
+    private func disconnectedHint(for provider: Provider) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: "link.badge.plus")
+            Image(systemName: provider.iconName)
                 .font(.pretendard(size: 24))
                 .foregroundStyle(.secondary)
 
-            Text("Please log in to Claude CLI")
-                .font(.pretendard(size: 12))
-                .foregroundStyle(.secondary)
-
-            Text("~/.claude/.credentials.json file is required")
-                .font(.pretendard(size: 10))
-                .foregroundStyle(.tertiary)
+            switch provider {
+            case .claude:
+                Text("Please log in to Claude CLI")
+                    .font(.pretendard(size: 12))
+                    .foregroundStyle(.secondary)
+                Text("~/.claude/.credentials.json file is required")
+                    .font(.pretendard(size: 10))
+                    .foregroundStyle(.tertiary)
+            case .minimax:
+                Text("MiniMax API key not configured")
+                    .font(.pretendard(size: 12))
+                    .foregroundStyle(.secondary)
+                Text("Set API key in Settings > MiniMax")
+                    .font(.pretendard(size: 10))
+                    .foregroundStyle(.tertiary)
+            default:
+                Text("\(provider.displayName) not connected")
+                    .font(.pretendard(size: 12))
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity)
