@@ -31,13 +31,17 @@ enum Constants {
         static let modelPrefixes = ["minimax", "hailuo"]
     }
 
-    // Keychain 계정에 MiniMax 추가
+    enum Kimi {
+        static let usageURL = "https://api.kimi.com/coding/v1/usages"
+        static let apiKeyEnvVar = "KIMI_API_KEY"
+    }
 
     enum Keychain {
         static let serviceName = "com.llmtokenbar.credentials"
         static let claudeAccount = "claude-oauth"
         static let geminiAccount = "gemini-apikey"
         static let minimaxAccount = "minimax-apikey"
+        static let kimiAccount = "kimi-apikey"
     }
 
     enum UI {

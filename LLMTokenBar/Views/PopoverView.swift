@@ -77,6 +77,7 @@ struct PopoverView: View {
                     switch provider {
                     case .claude: return !manager.syncStatus.isConnected
                     case .minimax: return !manager.minimaxSyncStatus.isConnected
+                    case .kimi: return !manager.kimiSyncStatus.isConnected
                     case .openai, .gemini: return false
                     }
                 }
@@ -99,6 +100,8 @@ struct PopoverView: View {
             codexRateLimitView
         case .minimax:
             minimaxUsageView
+        case .kimi:
+            kimiUsageView
         case .gemini:
             EmptyView()
         }
@@ -203,6 +206,27 @@ struct PopoverView: View {
         }
     }
 
+    @ViewBuilder
+    private var kimiUsageView: some View {
+        if manager.kimiSyncStatus.isConnected {
+            VStack(alignment: .leading, spacing: 6) {
+                providerHeader(name: "Kimi", icon: "moon.stars", color: .blue)
+
+                if let error = manager.kimiErrorMessage {
+                    errorBanner(error)
+                }
+
+                if let session = manager.kimiUsage.sessionUsage {
+                    UsageCardView(entry: session)
+                }
+
+                if let weekly = manager.kimiUsage.weeklyUsage {
+                    UsageCardView(entry: weekly)
+                }
+            }
+        }
+    }
+
     private func errorBanner(_ message: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -239,6 +263,13 @@ struct PopoverView: View {
                     .font(.pretendard(size: 12))
                     .foregroundStyle(.secondary)
                 Text("Set API key in Settings > MiniMax")
+                    .font(.pretendard(size: 10))
+                    .foregroundStyle(.tertiary)
+            case .kimi:
+                Text("Kimi API key not configured")
+                    .font(.pretendard(size: 12))
+                    .foregroundStyle(.secondary)
+                Text("Set API key in Settings > Kimi")
                     .font(.pretendard(size: 10))
                     .foregroundStyle(.tertiary)
             default:

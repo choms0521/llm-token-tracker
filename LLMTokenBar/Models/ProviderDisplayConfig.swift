@@ -20,6 +20,7 @@ final class ProviderDisplayConfig: ObservableObject {
         ProviderDisplayItem(provider: .claude, isEnabled: true),
         ProviderDisplayItem(provider: .openai, isEnabled: true),
         ProviderDisplayItem(provider: .minimax, isEnabled: true),
+        ProviderDisplayItem(provider: .kimi, isEnabled: true),
         ProviderDisplayItem(provider: .gemini, isEnabled: false),
     ]
 

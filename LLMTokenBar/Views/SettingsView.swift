@@ -6,6 +6,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case gemini
     case openai
     case minimax
+    case kimi
     case display
     case history
     case tokens
@@ -19,6 +20,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .gemini: return "Gemini"
         case .openai: return "OpenAI"
         case .minimax: return "MiniMax"
+        case .kimi: return "Kimi"
         case .display: return "Display"
         case .history: return "History"
         case .tokens: return "Token Stats"
@@ -32,6 +34,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .gemini: return "sparkles"
         case .openai: return "cpu"
         case .minimax: return "wand.and.stars"
+        case .kimi: return "moon.stars"
         case .display: return "square.stack.3d.up"
         case .history: return "chart.line.uptrend.xyaxis"
         case .tokens: return "number.square"
@@ -61,7 +64,7 @@ struct SettingsView: View {
     private var sidebar: some View {
         List(selection: $selectedTab) {
             Section("Credentials") {
-                ForEach([SettingsTab.claude, .gemini, .openai, .minimax], id: \.self) { tab in
+                ForEach([SettingsTab.claude, .gemini, .openai, .minimax, .kimi], id: \.self) { tab in
                     Label(tab.localizedName, systemImage: tab.iconName)
                         .tag(tab)
                 }
@@ -112,6 +115,12 @@ struct SettingsView: View {
             MiniMaxSettingsView(
                 syncStatus: manager.minimaxSyncStatus,
                 authService: manager.minimaxAuth,
+                onResync: { await manager.resync() }
+            )
+        case .kimi:
+            KimiSettingsView(
+                syncStatus: manager.kimiSyncStatus,
+                authService: manager.kimiAuth,
                 onResync: { await manager.resync() }
             )
         case .display:
