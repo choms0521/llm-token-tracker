@@ -141,6 +141,77 @@ struct MiniMaxModelRemain: Decodable {
     }
 }
 
+// MARK: - Kimi
+
+struct KimiUsageResponse: Decodable {
+    let user: KimiUser?
+    let usage: KimiUsageDetail
+    let limits: [KimiLimitEntry]
+    let parallel: KimiParallel?
+}
+
+struct KimiUser: Decodable {
+    let userId: String?
+    let region: String?
+    let membership: KimiMembership?
+}
+
+struct KimiMembership: Decodable {
+    let level: String?
+}
+
+struct KimiUsageDetail: Decodable {
+    let limit: String
+    let used: String
+    let remaining: String
+    let resetTime: String?
+
+    var limitInt: Int { Int(limit) ?? 0 }
+    var usedInt: Int { Int(used) ?? 0 }
+
+    var utilization: Double {
+        guard limitInt > 0 else { return 0 }
+        return Double(usedInt) / Double(limitInt) * 100.0
+    }
+
+    var resetsAtDate: Date? {
+        guard let resetTime else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: resetTime) { return date }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: resetTime)
+    }
+}
+
+struct KimiLimitEntry: Decodable {
+    let window: KimiWindow?
+    let detail: KimiUsageDetail
+}
+
+struct KimiWindow: Decodable {
+    let duration: Int?
+    let timeUnit: String?
+
+    var displayLabel: String {
+        guard let duration else { return "Window" }
+        let unit = timeUnit ?? ""
+        if unit.contains("MINUTE") {
+            if duration >= 60, duration % 60 == 0 {
+                return "\(duration / 60)h Window"
+            }
+            return "\(duration)m Window"
+        }
+        if unit.contains("HOUR") { return "\(duration)h Window" }
+        if unit.contains("DAY") { return "\(duration)d Window" }
+        return "\(duration)s Window"
+    }
+}
+
+struct KimiParallel: Decodable {
+    let limit: String?
+}
+
 struct UsageBucket: Decodable {
     let utilization: Double
     let resetsAt: String?

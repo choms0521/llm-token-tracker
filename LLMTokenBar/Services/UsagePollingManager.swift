@@ -5,16 +5,21 @@ import Combine
 final class UsagePollingManager: ObservableObject {
     @Published var claudeUsage: UsageData
     @Published var minimaxUsage: UsageData
+    @Published var kimiUsage: UsageData
     @Published var syncStatus: SyncStatus
     @Published var minimaxSyncStatus: SyncStatus
+    @Published var kimiSyncStatus: SyncStatus
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var minimaxErrorMessage: String?
+    @Published var kimiErrorMessage: String?
 
     private let claudeAuthService: ClaudeAuthService
     private let claudeUsageService: ClaudeUsageService
     let minimaxAuth: MiniMaxAuthService
     private let minimaxUsageService: MiniMaxUsageService
+    let kimiAuth: KimiAuthService
+    private let kimiUsageService: KimiUsageService
     private var pollingTask: Task<Void, Never>?
     private var consecutiveFailures = 0
     private var lastError: Error?
@@ -24,6 +29,7 @@ final class UsagePollingManager: ObservableObject {
     private var lastUsageSnapshot: Double?
     private var stableCount = 0
     private var minimaxConsecutiveFailures = 0
+    private var kimiConsecutiveFailures = 0
 
     private let minimumFetchInterval: TimeInterval = 60  // 최소 60초 간격
     private let stableThreshold = 3  // 3회 연속 동일하면 안정 상태
@@ -40,6 +46,12 @@ final class UsagePollingManager: ObservableObject {
         self.minimaxUsageService = MiniMaxUsageService(authService: mmAuthService)
         self.minimaxUsage = .empty(for: .minimax)
         self.minimaxSyncStatus = .disconnected(for: .minimax)
+
+        let kimiAuthService = KimiAuthService()
+        self.kimiAuth = kimiAuthService
+        self.kimiUsageService = KimiUsageService(authService: kimiAuthService)
+        self.kimiUsage = .empty(for: .kimi)
+        self.kimiSyncStatus = .disconnected(for: .kimi)
     }
 
     func startPolling() {
@@ -89,12 +101,13 @@ final class UsagePollingManager: ObservableObject {
         isLoading = true
         errorMessage = nil
         minimaxErrorMessage = nil
+        kimiErrorMessage = nil
 
-        // Claude & MiniMax 병렬 네트워크 요청
-        // 두 요청이 모두 끝난 뒤에만 로딩/중복 호출 상태를 해제
+        // Claude & MiniMax & Kimi 병렬 네트워크 요청
         async let claudeFetch: Void = fetchClaude()
         async let minimaxFetch: Void = fetchMiniMax()
-        _ = await (claudeFetch, minimaxFetch)
+        async let kimiFetch: Void = fetchKimi()
+        _ = await (claudeFetch, minimaxFetch, kimiFetch)
 
         lastFetchTime = Date()
         isFetching = false
@@ -187,6 +200,42 @@ final class UsagePollingManager: ObservableObject {
                 minimaxErrorMessage = error.localizedDescription
                 if minimaxConsecutiveFailures == 1 {
                     minimaxUsage = .empty(for: .minimax)
+                }
+            }
+        }
+    }
+
+    private func fetchKimi() async {
+        kimiSyncStatus = await kimiAuth.getSyncStatus()
+
+        guard kimiSyncStatus.isConnected else { return }
+
+        do {
+            let usage = try await kimiUsageService.fetchUsage()
+            kimiUsage = usage
+            kimiConsecutiveFailures = 0
+            kimiErrorMessage = nil
+        } catch {
+            kimiConsecutiveFailures += 1
+
+            let isRateLimited: Bool
+            if case UsageError.rateLimited = error {
+                isRateLimited = true
+            } else {
+                isRateLimited = false
+            }
+
+            if isRateLimited {
+                let hasCache = kimiUsage.sessionUsage != nil || kimiUsage.weeklyUsage != nil
+                if hasCache {
+                    kimiErrorMessage = "Rate limit - 잠시 후 자동 재시도"
+                } else {
+                    kimiErrorMessage = error.localizedDescription
+                }
+            } else {
+                kimiErrorMessage = error.localizedDescription
+                if kimiConsecutiveFailures == 1 {
+                    kimiUsage = .empty(for: .kimi)
                 }
             }
         }

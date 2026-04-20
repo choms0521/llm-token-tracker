@@ -5,6 +5,7 @@ enum Provider: String, CaseIterable, Identifiable, Codable {
     case gemini
     case openai
     case minimax
+    case kimi
 
     var id: String { rawValue }
 
@@ -14,6 +15,7 @@ enum Provider: String, CaseIterable, Identifiable, Codable {
         case .gemini: return "Gemini"
         case .openai: return "OpenAI"
         case .minimax: return "MiniMax"
+        case .kimi: return "Kimi"
         }
     }
 
@@ -23,6 +25,7 @@ enum Provider: String, CaseIterable, Identifiable, Codable {
         case .gemini: return "sparkles"
         case .openai: return "cpu"
         case .minimax: return "wand.and.stars"
+        case .kimi: return "moon.stars"
         }
     }
 
@@ -32,6 +35,7 @@ enum Provider: String, CaseIterable, Identifiable, Codable {
         case .gemini: return "GeminiBlue"
         case .openai: return "OpenAIGreen"
         case .minimax: return "MiniMaxPurple"
+        case .kimi: return "KimiBlue"
         }
     }
 }
