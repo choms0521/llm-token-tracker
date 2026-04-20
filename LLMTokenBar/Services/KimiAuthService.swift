@@ -34,7 +34,7 @@ final class KimiAuthService: AuthServiceProtocol {
     func getSyncStatus() async -> SyncStatus {
         do {
             let apiKey = try await loadCredentials()
-            let masked = String(apiKey.prefix(12)) + "..."
+            let masked = String(apiKey.prefix(8)) + "..."
             return SyncStatus(
                 provider: .kimi,
                 isConnected: true,
