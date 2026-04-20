@@ -195,7 +195,12 @@ struct KimiUsageDetail: Decodable {
     ) -> String? {
         if let str = try? container.decode(String.self, forKey: key) { return str }
         if let num = try? container.decode(Int.self, forKey: key) { return String(num) }
-        if let num = try? container.decode(Double.self, forKey: key) { return String(Int(num)) }
+        if let num = try? container.decode(Double.self, forKey: key) {
+            if num.isFinite, num >= Double(Int.min), num <= Double(Int.max) {
+                return String(Int(num))
+            }
+            return String(num)
+        }
         return nil
     }
 
