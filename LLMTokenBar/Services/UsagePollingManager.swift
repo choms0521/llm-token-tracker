@@ -226,7 +226,7 @@ final class UsagePollingManager: ObservableObject {
             }
 
             if isRateLimited {
-                let hasCache = kimiUsage.sessionUsage != nil
+                let hasCache = kimiUsage.sessionUsage != nil || kimiUsage.weeklyUsage != nil
                 if hasCache {
                     kimiErrorMessage = "Rate limit - 잠시 후 자동 재시도"
                 } else {
