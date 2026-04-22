@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "KimiUsage")
 
 @MainActor
 final class KimiUsageService: UsageServiceProtocol {
@@ -69,6 +72,12 @@ final class KimiUsageService: UsageServiceProtocol {
         do {
             response = try JSONDecoder().decode(KimiUsageResponse.self, from: data)
         } catch {
+            #if DEBUG
+            if let rawJSON = String(data: data, encoding: .utf8) {
+                logger.debug("Kimi decoding failed. Raw response: \(rawJSON.prefix(500))")
+            }
+            #endif
+            logger.error("Kimi decoding error: \(error)")
             throw UsageError.decodingError(error)
         }
 

@@ -84,15 +84,29 @@ struct SettingsView: View {
         .listStyle(.sidebar)
         .frame(minWidth: 160)
         .safeAreaInset(edge: .bottom) {
-            Button(action: { NSApp.terminate(nil) }) {
-                Label("Quit App", systemImage: "power")
-                    .font(.pretendard(size: 12))
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+            VStack(spacing: 4) {
+                #if DEBUG
+                HStack {
+                    Text("DEV")
+                        .font(.pretendard(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(.orange))
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                #endif
+                Button(action: { NSApp.terminate(nil) }) {
+                    Label("Quit App", systemImage: "power")
+                        .font(.pretendard(size: 12))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 

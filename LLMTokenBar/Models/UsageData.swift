@@ -166,6 +166,44 @@ struct KimiUsageDetail: Decodable {
     let remaining: String
     let resetTime: String?
 
+    enum CodingKeys: String, CodingKey {
+        case limit, used, remaining
+        case resetTime = "reset_time"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        limit = Self.decodeFlexibleString(from: container, forKey: .limit) ?? "0"
+        used = Self.decodeFlexibleString(from: container, forKey: .used) ?? "0"
+        remaining = Self.decodeFlexibleString(from: container, forKey: .remaining) ?? "0"
+        // resetTime: try camelCase fallback if snake_case not found
+        if let value = try? container.decodeIfPresent(String.self, forKey: .resetTime) {
+            resetTime = value
+        } else {
+            let fallback = try decoder.container(keyedBy: FallbackCodingKeys.self)
+            resetTime = try? fallback.decodeIfPresent(String.self, forKey: .resetTime)
+        }
+    }
+
+    private enum FallbackCodingKeys: String, CodingKey {
+        case resetTime
+    }
+
+    private static func decodeFlexibleString(
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) -> String? {
+        if let str = try? container.decode(String.self, forKey: key) { return str }
+        if let num = try? container.decode(Int.self, forKey: key) { return String(num) }
+        if let num = try? container.decode(Double.self, forKey: key) {
+            if num.isFinite, num >= Double(Int.min), num <= Double(Int.max) {
+                return String(Int(num))
+            }
+            return String(num)
+        }
+        return nil
+    }
+
     var limitInt: Int { Int(limit) ?? 0 }
     var usedInt: Int { Int(used) ?? 0 }
 
@@ -192,6 +230,27 @@ struct KimiLimitEntry: Decodable {
 struct KimiWindow: Decodable {
     let duration: Int?
     let timeUnit: String?
+
+    enum CodingKeys: String, CodingKey {
+        case duration
+        case timeUnit = "time_unit"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        duration = try? container.decodeIfPresent(Int.self, forKey: .duration)
+        // try snake_case first, then camelCase fallback
+        if let value = try? container.decodeIfPresent(String.self, forKey: .timeUnit) {
+            timeUnit = value
+        } else {
+            let fallback = try decoder.container(keyedBy: FallbackCodingKeys.self)
+            timeUnit = try? fallback.decodeIfPresent(String.self, forKey: .timeUnit)
+        }
+    }
+
+    private enum FallbackCodingKeys: String, CodingKey {
+        case timeUnit
+    }
 
     var displayLabel: String {
         guard let duration else { return "Window" }
