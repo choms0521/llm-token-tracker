@@ -160,6 +160,7 @@ final class UsagePollingManager: ObservableObject {
                     errorMessage = error.localizedDescription
                 }
             } else {
+                syncStatus = await claudeAuthService.getSyncStatus()
                 errorMessage = error.localizedDescription
                 if consecutiveFailures == 1 {
                     claudeUsage = .empty(for: .claude)
@@ -280,8 +281,7 @@ final class UsagePollingManager: ObservableObject {
     }
 
     func syncFromCLI() async {
-        // Re-read credentials from Keychain (no re-login needed)
-        // Claude Code stores OAuth tokens in Keychain when user logs in via CLI
+        // Re-read all available Claude credential sources after the user updates CLI login state.
         await fetchAll(force: true)
     }
 

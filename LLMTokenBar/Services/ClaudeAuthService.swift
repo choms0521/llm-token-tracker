@@ -13,7 +13,7 @@ enum AuthError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .credentialsNotFound:
-            return "Claude CLI 자격증명을 찾을 수 없습니다"
+            return "Claude 자격증명을 찾을 수 없습니다. Claude Code CLI에 다시 로그인한 뒤 Sync Credentials를 눌러주세요."
         case .invalidCredentials:
             return "잘못된 자격증명 형식입니다"
         case .tokenRefreshFailed(let reason):
@@ -28,6 +28,22 @@ enum AuthError: LocalizedError {
 final class ClaudeAuthService: AuthServiceProtocol {
     let provider = Provider.claude
     private var cachedOAuth: ClaudeOAuth?
+    private let fileManager: FileManager
+    private let cliCredentialsPath: String
+    private let fileCachePathOverride: URL?
+    private let keychainDataProvider: () -> Data?
+
+    init(
+        fileManager: FileManager = .default,
+        cliCredentialsPath: String = Constants.Claude.credentialsPath,
+        fileCachePath: URL? = nil,
+        keychainDataProvider: @escaping () -> Data? = ClaudeAuthService.defaultKeychainData
+    ) {
+        self.fileManager = fileManager
+        self.cliCredentialsPath = cliCredentialsPath
+        self.fileCachePathOverride = fileCachePath
+        self.keychainDataProvider = keychainDataProvider
+    }
 
     func loadCredentials() async throws -> String {
         if let cached = cachedOAuth, !cached.isExpired {
@@ -35,11 +51,6 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
 
         let oauth = try readCredentials()
-
-        if oauth.isExpired {
-            throw AuthError.tokenRefreshFailed("토큰이 만료되었습니다. CLI에서 다시 로그인하세요.")
-        }
-
         cachedOAuth = oauth
         return oauth.accessToken
     }
@@ -51,9 +62,10 @@ final class ClaudeAuthService: AuthServiceProtocol {
     }
 
     func getSyncStatus() async -> SyncStatus {
-        do {
-            let oauth = try readCredentials()
+        let inspection = inspectCredentials()
 
+        if let candidate = inspection.validCredential {
+            let oauth = candidate.oauth
             let tokenPrefix = String(oauth.accessToken.prefix(6))
             let maskedToken = "\(tokenPrefix)••••••••"
 
@@ -64,38 +76,58 @@ final class ClaudeAuthService: AuthServiceProtocol {
                 subscription: oauth.subscriptionType,
                 maskedToken: maskedToken,
                 scopes: oauth.scopes ?? [],
-                rateLimitTier: oauth.rateLimitTier
+                rateLimitTier: oauth.rateLimitTier,
+                credentialSource: candidate.source,
+                expiresAt: oauth.expiresAtDate,
+                statusMessage: "Using \(candidate.source.displayName)",
+                recoverySuggestion: nil
             )
-        } catch {
-            return .disconnected(for: .claude)
         }
+
+        if let candidate = inspection.expiredCredential {
+            let source = candidate.source
+            let expiresAt = candidate.oauth.expiresAtDate
+            return .disconnected(
+                for: .claude,
+                credentialSource: source,
+                expiresAt: expiresAt,
+                statusMessage: "Stored token in \(source.displayName) expired at \(Self.formatDate(expiresAt)).",
+                recoverySuggestion: "Run `claude` in Terminal to sign in again, then click Sync Credentials."
+            )
+        }
+
+        return .disconnected(
+            for: .claude,
+            statusMessage: "No Claude credentials were found in cache, CLI files, or Claude Code Keychain.",
+            recoverySuggestion: "Run `claude` in Terminal to sign in, then click Sync Credentials."
+        )
     }
 
     // MARK: - Credential Reading (File Cache → CLI File → Claude Code Keychain)
 
     private func readCredentials() throws -> ClaudeOAuth {
-        // 1. Try app's file cache first (no permission prompt, survives re-signing)
-        if let oauth = readFromFileCache(), !oauth.isExpired {
-            return oauth
+        let inspection = inspectCredentials()
+
+        if let candidate = inspection.validCredential {
+            if candidate.source != .appCache {
+                saveToFileCache(candidate.oauth)
+            }
+            return candidate.oauth
         }
 
-        // 2. Try CLI credentials file (no permission prompt)
-        if let oauth = readFromCLIFile(), !oauth.isExpired {
-            saveToFileCache(oauth)
-            return oauth
-        }
-
-        // 3. Last resort: Claude Code's Keychain (may trigger macOS permission prompt)
-        logger.info("파일 캐시/CLI 파일에서 유효한 토큰을 찾지 못해 Claude Code Keychain에 접근합니다")
-        if let oauth = readFromClaudeKeychain(), !oauth.isExpired {
-            saveToFileCache(oauth)
-            return oauth
+        if let expired = inspection.expiredCredential {
+            throw AuthError.tokenRefreshFailed(
+                "\(expired.source.displayName)에 저장된 토큰이 만료되었습니다. Claude Code CLI에서 다시 로그인한 뒤 Sync Credentials를 눌러주세요."
+            )
         }
 
         throw AuthError.credentialsNotFound
     }
 
     private var fileCachePath: URL {
+        if let fileCachePathOverride {
+            return fileCachePathOverride
+        }
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let dir = appSupport.appendingPathComponent("LLMTokenBar", isDirectory: true)
         return dir.appendingPathComponent("claude-oauth-cache.json")
@@ -103,7 +135,7 @@ final class ClaudeAuthService: AuthServiceProtocol {
 
     private func readFromFileCache() -> ClaudeOAuth? {
         let path = fileCachePath
-        guard FileManager.default.fileExists(atPath: path.path) else { return nil }
+        guard fileManager.fileExists(atPath: path.path) else { return nil }
         do {
             let data = try Data(contentsOf: path)
             return parseCredentialData(data)
@@ -117,20 +149,25 @@ final class ClaudeAuthService: AuthServiceProtocol {
         let path = fileCachePath
         do {
             let dir = path.deletingLastPathComponent()
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(oauth)
             try data.write(to: path, options: [.atomic])
-            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path.path)
+            try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path.path)
         } catch {
             logger.warning("파일 캐시 저장 실패: \(error.localizedDescription)")
         }
     }
 
     private func clearFileCache() {
-        try? FileManager.default.removeItem(at: fileCachePath)
+        try? fileManager.removeItem(at: fileCachePath)
     }
 
     private func readFromClaudeKeychain() -> ClaudeOAuth? {
+        guard let data = keychainDataProvider() else { return nil }
+        return parseCredentialData(data)
+    }
+
+    private nonisolated static func defaultKeychainData() -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "Claude Code-credentials",
@@ -148,20 +185,19 @@ final class ClaudeAuthService: AuthServiceProtocol {
             return nil
         }
 
-        return parseCredentialData(data)
+        return data
     }
 
     private func readFromCLIFile() -> ClaudeOAuth? {
-        let path = Constants.Claude.credentialsPath
-        guard FileManager.default.fileExists(atPath: path) else {
+        guard fileManager.fileExists(atPath: cliCredentialsPath) else {
             return nil
         }
 
         do {
-            let data = try Data(contentsOf: URL(fileURLWithPath: path))
+            let data = try Data(contentsOf: URL(fileURLWithPath: cliCredentialsPath))
             return parseCredentialData(data)
         } catch {
-            logger.error("자격증명 파일 읽기 실패 (\(path)): \(error.localizedDescription)")
+            logger.error("자격증명 파일 읽기 실패 (\(self.cliCredentialsPath)): \(error.localizedDescription)")
             return nil
         }
     }
@@ -188,4 +224,49 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
     }
 
+    private func inspectCredentials() -> ClaudeCredentialInspection {
+        let candidates = [
+            readCandidate(from: .appCache),
+            readCandidate(from: .cliFile),
+            readCandidate(from: .claudeKeychain),
+        ].compactMap { $0 }
+
+        return ClaudeCredentialInspection(
+            validCredential: candidates.first(where: { !$0.oauth.isExpired }),
+            expiredCredential: candidates.first(where: { $0.oauth.isExpired })
+        )
+    }
+
+    private func readCandidate(from source: ClaudeCredentialSource) -> ClaudeCredentialCandidate? {
+        let oauth: ClaudeOAuth?
+        switch source {
+        case .appCache:
+            oauth = readFromFileCache()
+        case .cliFile:
+            oauth = readFromCLIFile()
+        case .claudeKeychain:
+            oauth = readFromClaudeKeychain()
+        }
+
+        guard let oauth else { return nil }
+        return ClaudeCredentialCandidate(source: source, oauth: oauth)
+    }
+
+    private static func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+}
+
+private struct ClaudeCredentialCandidate {
+    let source: ClaudeCredentialSource
+    let oauth: ClaudeOAuth
+}
+
+private struct ClaudeCredentialInspection {
+    let validCredential: ClaudeCredentialCandidate?
+    let expiredCredential: ClaudeCredentialCandidate?
 }

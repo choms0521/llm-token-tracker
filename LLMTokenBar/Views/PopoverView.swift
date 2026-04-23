@@ -255,9 +255,23 @@ struct PopoverView: View {
                 Text("Please log in to Claude CLI")
                     .font(.pretendard(size: 12))
                     .foregroundStyle(.secondary)
-                Text("~/.claude/.credentials.json file is required")
-                    .font(.pretendard(size: 10))
-                    .foregroundStyle(.tertiary)
+                if let statusMessage = manager.syncStatus.statusMessage {
+                    Text(statusMessage)
+                        .font(.pretendard(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                }
+                if let suggestion = manager.syncStatus.recoverySuggestion {
+                    Text(suggestion)
+                        .font(.pretendard(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Text("Open Settings > Claude and click Sync Credentials after logging in.")
+                        .font(.pretendard(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                }
             case .minimax:
                 Text("MiniMax API key not configured")
                     .font(.pretendard(size: 12))
