@@ -18,6 +18,9 @@ DerivedData/
 .omc/
 .gemini/
 .claude/
+.omx/
+.codex-worktrees/
+.copilot-review-state.json
 
 # Local config
 Local.xcconfig
@@ -25,3 +28,14 @@ Generated.xcconfig
 
 # Profiling data
 *.profraw
+
+# Local review and scratch artifacts
+agent_code_review.md
+*-agent-llm-code-review.md
+northeast_asia_map.html
+test_upload.txt
+
+# Local signing artifacts
+*.cer
+*.certSigningRequest
+*.p12
