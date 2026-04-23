@@ -117,6 +117,7 @@ struct SettingsView: View {
             CLISyncDetailView(
                 provider: .claude,
                 syncStatus: manager.syncStatus,
+                errorMessage: manager.errorMessage,
                 onResync: { Task { await manager.resync() } },
                 onDisconnect: { manager.disconnect() },
                 onSyncFromCLI: { await manager.syncFromCLI() }
@@ -152,6 +153,7 @@ struct SettingsView: View {
 struct CLISyncDetailView: View {
     let provider: Provider
     let syncStatus: SyncStatus
+    let errorMessage: String?
     var onResync: () -> Void
     var onDisconnect: () -> Void
     var onSyncFromCLI: () async -> Void = {}
@@ -167,6 +169,9 @@ struct CLISyncDetailView: View {
                     .foregroundStyle(.secondary)
 
                 syncStatusBanner
+                if let errorMessage {
+                    errorBanner(errorMessage)
+                }
 
                 if syncStatus.isConnected {
                     accountDetailsView
@@ -191,6 +196,18 @@ struct CLISyncDetailView: View {
             Text("No synced credentials yet")
                 .font(.pretendard(size: 13))
                 .foregroundStyle(.primary)
+
+            if let statusMessage = syncStatus.statusMessage {
+                Text(statusMessage)
+                    .font(.pretendard(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            if let suggestion = syncStatus.recoverySuggestion {
+                Text(suggestion)
+                    .font(.pretendard(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -210,7 +227,7 @@ struct CLISyncDetailView: View {
                         .font(.pretendard(size: 11))
                         .foregroundStyle(.secondary)
 
-                    Text("Log in with 'claude' command in terminal, then click below")
+                    Text("Re-reads LLM Token Bar cache, Claude CLI files, and Claude Code Keychain")
                         .font(.pretendard(size: 10))
                         .foregroundStyle(.tertiary)
                 }
@@ -231,7 +248,7 @@ struct CLISyncDetailView: View {
                     } else {
                         Image(systemName: "arrow.triangle.2.circlepath")
                     }
-                    Text("Sync from Keychain")
+                    Text("Sync Credentials")
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -257,6 +274,11 @@ struct CLISyncDetailView: View {
                     Text(TimeFormatter.syncTimeString(from: lastSync))
                         .font(.pretendard(size: 11))
                         .foregroundStyle(.secondary)
+                } else if let statusMessage = syncStatus.statusMessage {
+                    Text(statusMessage)
+                        .font(.pretendard(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
             }
         }
@@ -278,6 +300,14 @@ struct CLISyncDetailView: View {
 
             if let token = syncStatus.maskedToken {
                 DetailRow(icon: "key", label: String(localized: "Access Token"), value: token)
+            }
+
+            if let source = syncStatus.credentialSource {
+                DetailRow(icon: "externaldrive", label: "Credential Source", value: source.displayName)
+            }
+
+            if let expiresAt = syncStatus.expiresAt {
+                DetailRow(icon: "clock", label: "Expires", value: formatDate(expiresAt))
             }
 
             if let sub = syncStatus.subscription {
@@ -311,15 +341,39 @@ struct CLISyncDetailView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                BulletText("Auto-switch CLI login by profile")
+                BulletText("Re-read Claude credentials on demand")
                 BulletText("Keep CLI and app accounts in sync")
-                BulletText("Auto-refresh credentials on profile switch")
+                BulletText("Show where credentials came from and when they expire")
             }
             .padding(.leading, 4)
         }
         .padding(12)
         .background(.blue.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.pretendard(size: 11))
+
+            Text(message)
+                .font(.pretendard(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.orange.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 
     private var actionButtons: some View {

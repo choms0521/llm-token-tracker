@@ -1,5 +1,22 @@
 import Foundation
 
+enum ClaudeCredentialSource: String, Codable, Equatable {
+    case appCache
+    case cliFile
+    case claudeKeychain
+
+    var displayName: String {
+        switch self {
+        case .appCache:
+            return "LLM Token Bar cache"
+        case .cliFile:
+            return "~/.claude/.credentials.json"
+        case .claudeKeychain:
+            return "Claude Code Keychain"
+        }
+    }
+}
+
 struct ClaudeCredentialsWrapper: Codable {
     let claudeAiOauth: ClaudeOAuth?
 }
@@ -29,8 +46,44 @@ struct SyncStatus: Equatable {
     let maskedToken: String?
     let scopes: [String]
     let rateLimitTier: String?
+    let credentialSource: ClaudeCredentialSource?
+    let expiresAt: Date?
+    let statusMessage: String?
+    let recoverySuggestion: String?
 
-    static func disconnected(for provider: Provider) -> SyncStatus {
+    init(
+        provider: Provider,
+        isConnected: Bool,
+        lastSyncedAt: Date?,
+        subscription: String?,
+        maskedToken: String?,
+        scopes: [String],
+        rateLimitTier: String?,
+        credentialSource: ClaudeCredentialSource? = nil,
+        expiresAt: Date? = nil,
+        statusMessage: String? = nil,
+        recoverySuggestion: String? = nil
+    ) {
+        self.provider = provider
+        self.isConnected = isConnected
+        self.lastSyncedAt = lastSyncedAt
+        self.subscription = subscription
+        self.maskedToken = maskedToken
+        self.scopes = scopes
+        self.rateLimitTier = rateLimitTier
+        self.credentialSource = credentialSource
+        self.expiresAt = expiresAt
+        self.statusMessage = statusMessage
+        self.recoverySuggestion = recoverySuggestion
+    }
+
+    static func disconnected(
+        for provider: Provider,
+        credentialSource: ClaudeCredentialSource? = nil,
+        expiresAt: Date? = nil,
+        statusMessage: String? = nil,
+        recoverySuggestion: String? = nil
+    ) -> SyncStatus {
         SyncStatus(
             provider: provider,
             isConnected: false,
@@ -38,7 +91,11 @@ struct SyncStatus: Equatable {
             subscription: nil,
             maskedToken: nil,
             scopes: [],
-            rateLimitTier: nil
+            rateLimitTier: nil,
+            credentialSource: credentialSource,
+            expiresAt: expiresAt,
+            statusMessage: statusMessage,
+            recoverySuggestion: recoverySuggestion
         )
     }
 }
