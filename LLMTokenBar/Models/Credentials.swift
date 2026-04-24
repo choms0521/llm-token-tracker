@@ -5,6 +5,12 @@ enum ClaudeCredentialSource: String, Codable, Equatable {
     case cliFile
     case claudeKeychain
 
+    static let discoveryOrder: [ClaudeCredentialSource] = [
+        .appCache,
+        .cliFile,
+        .claudeKeychain,
+    ]
+
     var displayName: String {
         switch self {
         case .appCache:
