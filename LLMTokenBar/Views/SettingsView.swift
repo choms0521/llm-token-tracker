@@ -498,6 +498,7 @@ enum StatusBarMetric: String, CaseIterable, Identifiable {
 struct GeneralSettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("pollingInterval") private var pollingInterval = 90.0
+    @AppStorage(StatusBarUsageProvider.storageKey) private var statusBarProvider = StatusBarUsageProvider.defaultValue
     @AppStorage("statusBarMetric") private var statusBarMetric = "session"
     @AppStorage("statusBarIcon") private var statusBarIcon = StatusBarIcon.default.rawValue
     @AppStorage("iconMode") private var iconMode = "static"
@@ -507,15 +508,31 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section("Menu Bar Display") {
+                Picker("Provider to Display", selection: $statusBarProvider) {
+                    ForEach(StatusBarUsageProvider.allCases) { provider in
+                        Label(provider.displayName, systemImage: provider.provider.iconName)
+                            .tag(provider.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+
                 Picker("Metric to Display", selection: $statusBarMetric) {
                     Text("Session Usage (5 Hours)").tag("session")
                     Text("Weekly Usage (7 Days)").tag("weekly")
-                    Divider()
-                    Text("Opus (Weekly)").tag("opus")
-                    Text("Sonnet (Weekly)").tag("sonnet")
-                    Text("Haiku (Weekly)").tag("haiku")
+                    if statusBarProvider == StatusBarUsageProvider.claude.rawValue {
+                        Divider()
+                        Text("Opus (Weekly)").tag("opus")
+                        Text("Sonnet (Weekly)").tag("sonnet")
+                        Text("Haiku (Weekly)").tag("haiku")
+                    }
                 }
                 .pickerStyle(.menu)
+                .onChange(of: statusBarProvider) { _, newValue in
+                    if newValue != StatusBarUsageProvider.claude.rawValue,
+                       !["session", "weekly"].contains(statusBarMetric) {
+                        statusBarMetric = "session"
+                    }
+                }
 
                 Text("Select usage % displayed next to the menu bar icon")
                     .font(.pretendard(size: 10))

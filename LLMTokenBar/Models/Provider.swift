@@ -39,3 +39,33 @@ enum Provider: String, CaseIterable, Identifiable, Codable {
         }
     }
 }
+
+enum StatusBarUsageProvider: String, CaseIterable, Identifiable {
+    case claude
+    case openai
+    case minimax
+    case kimi
+
+    static let storageKey = "statusBarProvider"
+    static let defaultValue = StatusBarUsageProvider.claude.rawValue
+
+    var id: String { rawValue }
+
+    var provider: Provider {
+        switch self {
+        case .claude: return .claude
+        case .openai: return .openai
+        case .minimax: return .minimax
+        case .kimi: return .kimi
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .openai:
+            return "Codex"
+        default:
+            return provider.displayName
+        }
+    }
+}
