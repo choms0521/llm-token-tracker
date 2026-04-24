@@ -225,15 +225,26 @@ final class ClaudeAuthService: AuthServiceProtocol {
     }
 
     private func inspectCredentials() -> ClaudeCredentialInspection {
-        let candidates = [
-            readCandidate(from: .appCache),
-            readCandidate(from: .cliFile),
-            readCandidate(from: .claudeKeychain),
-        ].compactMap { $0 }
+        var expiredCredential: ClaudeCredentialCandidate?
+
+        for source in ClaudeCredentialSource.discoveryOrder {
+            guard let candidate = readCandidate(from: source) else { continue }
+
+            if !candidate.oauth.isExpired {
+                return ClaudeCredentialInspection(
+                    validCredential: candidate,
+                    expiredCredential: expiredCredential
+                )
+            }
+
+            if expiredCredential == nil {
+                expiredCredential = candidate
+            }
+        }
 
         return ClaudeCredentialInspection(
-            validCredential: candidates.first(where: { !$0.oauth.isExpired }),
-            expiredCredential: candidates.first(where: { $0.oauth.isExpired })
+            validCredential: nil,
+            expiredCredential: expiredCredential
         )
     }
 
