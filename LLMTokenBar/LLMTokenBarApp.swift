@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var codexTimer: Timer?
     private var displaySettingsObserver: NSObjectProtocol?
     private let codexParser = CodexSessionParser()
+    private var cachedCodexLimits: CodexRateLimits?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -78,7 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 self?.updateStatusBar()
             }
         }
@@ -91,7 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Poll Codex rate limits periodically
         codexTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 self?.recordCodexLimits()
             }
         }
@@ -108,12 +109,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func recordCodexLimits() {
         guard let limits = codexParser.latestRateLimits(),
               limits.primary != nil else { return }
+        cachedCodexLimits = limits
         historyStore?.recordCodexLimits(limits)
         updateStatusBar()
     }
 
     private func loadCodexHistory() {
         let snapshots = codexParser.allRateLimitSnapshots()
+        cachedCodexLimits = snapshots.last?.limits
         for snapshot in snapshots {
             historyStore?.recordCodexSnapshot(
                 sessionUtilization: snapshot.limits.primary?.usedPercent,
@@ -124,10 +127,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateStatusBar() {
-        let metric = UserDefaults.standard.string(forKey: "statusBarMetric") ?? "session"
         let providerRawValue = UserDefaults.standard.string(forKey: StatusBarUsageProvider.storageKey)
             ?? StatusBarUsageProvider.defaultValue
         let provider = StatusBarUsageProvider(rawValue: providerRawValue) ?? .claude
+        let rawMetric = UserDefaults.standard.string(forKey: "statusBarMetric") ?? "session"
+        let metric = normalizedStatusBarMetric(rawMetric, for: provider)
 
         let value = statusBarValue(for: provider, metric: metric)
 
@@ -137,6 +141,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             statusBarController?.updateStatusText("")
             statusBarController?.updateUtilization(0)
+        }
+    }
+
+    private func normalizedStatusBarMetric(_ metric: String, for provider: StatusBarUsageProvider) -> String {
+        switch provider {
+        case .claude:
+            return ["session", "weekly", "opus", "sonnet", "haiku"].contains(metric) ? metric : "session"
+        case .openai, .minimax, .kimi:
+            return ["session", "weekly"].contains(metric) ? metric : "session"
         }
     }
 
@@ -173,7 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func codexValue(metric: String) -> Double? {
-        guard let limits = codexParser.latestRateLimits() else { return nil }
+        guard let limits = cachedCodexLimits else { return nil }
 
         switch metric {
         case "session":
