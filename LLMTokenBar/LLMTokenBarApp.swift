@@ -128,7 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateStatusBar() {
         let providerRawValue = UserDefaults.standard.string(forKey: StatusBarUsageProvider.storageKey)
-            ?? StatusBarUsageProvider.defaultValue
+            ?? StatusBarUsageProvider.defaultValue.rawValue
         let provider = StatusBarUsageProvider(rawValue: providerRawValue) ?? .claude
         let rawMetric = UserDefaults.standard.string(forKey: "statusBarMetric") ?? "session"
         let metric = normalizedStatusBarMetric(rawMetric, for: provider)

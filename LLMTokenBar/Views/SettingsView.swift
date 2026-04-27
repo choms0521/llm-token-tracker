@@ -511,7 +511,7 @@ struct GeneralSettingsView: View {
                 Picker("Provider to Display", selection: statusBarProviderSelection) {
                     ForEach(StatusBarUsageProvider.allCases) { provider in
                         Label(provider.displayName, systemImage: provider.provider.iconName)
-                            .tag(provider.rawValue)
+                            .tag(provider)
                     }
                 }
                 .pickerStyle(.menu)
@@ -519,7 +519,7 @@ struct GeneralSettingsView: View {
                 Picker("Metric to Display", selection: $statusBarMetric) {
                     Text("Session Usage (5 Hours)").tag("session")
                     Text("Weekly Usage (7 Days)").tag("weekly")
-                    if statusBarProvider == StatusBarUsageProvider.claude.rawValue {
+                    if statusBarProvider == .claude {
                         Divider()
                         Text("Opus (Weekly)").tag("opus")
                         Text("Sonnet (Weekly)").tag("sonnet")
@@ -644,11 +644,11 @@ struct GeneralSettingsView: View {
         }
     }
 
-    private var statusBarProviderSelection: Binding<String> {
+    private var statusBarProviderSelection: Binding<StatusBarUsageProvider> {
         Binding(
             get: { statusBarProvider },
             set: { newValue in
-                if newValue != StatusBarUsageProvider.claude.rawValue,
+                if newValue != .claude,
                    !["session", "weekly"].contains(statusBarMetric) {
                     statusBarMetric = "session"
                 }

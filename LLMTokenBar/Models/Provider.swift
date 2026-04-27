@@ -47,7 +47,7 @@ enum StatusBarUsageProvider: String, CaseIterable, Identifiable {
     case kimi
 
     static let storageKey = "statusBarProvider"
-    static let defaultValue = StatusBarUsageProvider.claude.rawValue
+    static let defaultValue = StatusBarUsageProvider.claude
 
     var id: String { rawValue }
 
