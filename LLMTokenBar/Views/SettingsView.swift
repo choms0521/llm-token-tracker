@@ -508,7 +508,7 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section("Menu Bar Display") {
-                Picker("Provider to Display", selection: $statusBarProvider) {
+                Picker("Provider to Display", selection: statusBarProviderSelection) {
                     ForEach(StatusBarUsageProvider.allCases) { provider in
                         Label(provider.displayName, systemImage: provider.provider.iconName)
                             .tag(provider.rawValue)
@@ -527,12 +527,6 @@ struct GeneralSettingsView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .onChange(of: statusBarProvider) { _, newValue in
-                    if newValue != StatusBarUsageProvider.claude.rawValue,
-                       !["session", "weekly"].contains(statusBarMetric) {
-                        statusBarMetric = "session"
-                    }
-                }
 
                 Text("Select usage % displayed next to the menu bar icon")
                     .font(.pretendard(size: 10))
@@ -648,5 +642,18 @@ struct GeneralSettingsView: View {
         } message: {
             Text("The app needs to restart to apply the language change.")
         }
+    }
+
+    private var statusBarProviderSelection: Binding<String> {
+        Binding(
+            get: { statusBarProvider },
+            set: { newValue in
+                if newValue != StatusBarUsageProvider.claude.rawValue,
+                   !["session", "weekly"].contains(statusBarMetric) {
+                    statusBarMetric = "session"
+                }
+                statusBarProvider = newValue
+            }
+        )
     }
 }
