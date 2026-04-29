@@ -21,14 +21,7 @@ final class CodexUsageStore: ObservableObject {
             await MainActor.run {
                 guard !Task.isCancelled else { return }
                 self.latestLimits = snapshots.last?.limits
-
-                for snapshot in snapshots {
-                    self.historyStore?.recordCodexSnapshot(
-                        sessionUtilization: snapshot.limits.primary?.usedPercent,
-                        weeklyUtilization: snapshot.limits.secondary?.usedPercent,
-                        timestamp: snapshot.timestamp
-                    )
-                }
+                self.historyStore?.recordCodexSnapshots(snapshots)
             }
         }
     }
@@ -49,7 +42,7 @@ final class CodexUsageStore: ObservableObject {
         }
     }
 
-    func startPolling(interval: TimeInterval = 60) {
+    func startPolling(interval: TimeInterval = 300) {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in

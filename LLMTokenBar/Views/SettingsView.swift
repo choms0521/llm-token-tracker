@@ -638,9 +638,11 @@ struct GeneralSettingsView: View {
         Binding(
             get: { statusBarProvider },
             set: { newValue in
-                let currentMetric = StatusBarMetric(rawValue: statusBarMetric) ?? .session
-                if !newValue.supportedStatusBarMetrics.contains(currentMetric) {
+                guard let currentMetric = StatusBarMetric(rawValue: statusBarMetric),
+                      newValue.supportedStatusBarMetrics.contains(currentMetric) else {
                     statusBarMetric = StatusBarMetric.session.rawValue
+                    statusBarProvider = newValue
+                    return
                 }
                 statusBarProvider = newValue
             }
