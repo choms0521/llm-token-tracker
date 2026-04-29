@@ -1,6 +1,6 @@
 import Foundation
 
-enum Provider: String, CaseIterable, Identifiable, Codable {
+enum Provider: String, CaseIterable, Identifiable, Codable, Sendable {
     case claude
     case gemini
     case openai
@@ -40,7 +40,7 @@ enum Provider: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-enum StatusBarUsageProvider: String, CaseIterable, Identifiable {
+enum StatusBarUsageProvider: String, CaseIterable, Identifiable, Sendable {
     case claude
     case openai
     case minimax
@@ -79,7 +79,7 @@ enum StatusBarUsageProvider: String, CaseIterable, Identifiable {
     }
 }
 
-enum StatusBarMetric: String, CaseIterable, Identifiable {
+enum StatusBarMetric: String, CaseIterable, Identifiable, Sendable {
     case session
     case weekly
     case opus
