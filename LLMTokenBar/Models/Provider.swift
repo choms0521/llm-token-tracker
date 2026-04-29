@@ -68,4 +68,23 @@ enum StatusBarUsageProvider: String, CaseIterable, Identifiable {
             return provider.displayName
         }
     }
+
+    var supportedStatusBarMetrics: [StatusBarMetric] {
+        switch self {
+        case .claude:
+            return StatusBarMetric.allCases
+        case .openai, .minimax, .kimi:
+            return [.session, .weekly]
+        }
+    }
+}
+
+enum StatusBarMetric: String, CaseIterable, Identifiable {
+    case session
+    case weekly
+    case opus
+    case sonnet
+    case haiku
+
+    var id: String { rawValue }
 }

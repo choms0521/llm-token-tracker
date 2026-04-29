@@ -19,11 +19,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var historyStore: UsageHistoryStore?
     private var tokenStats: TokenStatsService?
     private var displayConfig: ProviderDisplayConfig?
+    private var codexUsage: CodexUsageStore?
     private var cancellables = Set<AnyCancellable>()
-    private var codexTimer: Timer?
     private var displaySettingsObserver: NSObjectProtocol?
-    private let codexParser = CodexSessionParser()
-    private var cachedCodexLimits: CodexRateLimits?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -32,13 +30,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let history = UsageHistoryStore()
         let stats = TokenStatsService()
         let providerConfig = ProviderDisplayConfig()
+        let codexUsage = CodexUsageStore()
+        codexUsage.configure(historyStore: history)
         stats.reload()
         self.manager = pollingManager
         self.historyStore = history
         self.tokenStats = stats
         self.displayConfig = providerConfig
+        self.codexUsage = codexUsage
 
-        statusBarController = StatusBarController(manager: pollingManager, historyStore: history, tokenStats: stats, displayConfig: providerConfig)
+        statusBarController = StatusBarController(
+            manager: pollingManager,
+            historyStore: history,
+            tokenStats: stats,
+            displayConfig: providerConfig,
+            codexUsage: codexUsage
+        )
 
         pollingManager.$claudeUsage
             .receive(on: DispatchQueue.main)
@@ -49,6 +56,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if usage.sessionUsage != nil || usage.weeklyUsage != nil {
                     self?.historyStore?.record(from: usage)
                 }
+            }
+            .store(in: &cancellables)
+
+        codexUsage.$latestLimits
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateStatusBar()
             }
             .store(in: &cancellables)
 
@@ -86,43 +100,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         pollingManager.startPolling()
 
-        // Load historical Codex rate limits from session files
-        loadCodexHistory()
+        codexUsage.loadHistory()
+        codexUsage.startPolling()
         updateStatusBar()
-
-        // Poll Codex rate limits periodically
-        codexTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.recordCodexLimits()
-            }
-        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         manager?.stopPolling()
-        codexTimer?.invalidate()
+        codexUsage?.stopPolling()
         if let displaySettingsObserver {
             NotificationCenter.default.removeObserver(displaySettingsObserver)
-        }
-    }
-
-    private func recordCodexLimits() {
-        guard let limits = codexParser.latestRateLimits(),
-              limits.primary != nil else { return }
-        cachedCodexLimits = limits
-        historyStore?.recordCodexLimits(limits)
-        updateStatusBar()
-    }
-
-    private func loadCodexHistory() {
-        let snapshots = codexParser.allRateLimitSnapshots()
-        cachedCodexLimits = snapshots.last?.limits
-        for snapshot in snapshots {
-            historyStore?.recordCodexSnapshot(
-                sessionUtilization: snapshot.limits.primary?.usedPercent,
-                weeklyUtilization: snapshot.limits.secondary?.usedPercent,
-                timestamp: snapshot.timestamp
-            )
         }
     }
 
@@ -145,12 +132,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func normalizedStatusBarMetric(_ metric: String, for provider: StatusBarUsageProvider) -> String {
-        switch provider {
-        case .claude:
-            return ["session", "weekly", "opus", "sonnet", "haiku"].contains(metric) ? metric : "session"
-        case .openai, .minimax, .kimi:
-            return ["session", "weekly"].contains(metric) ? metric : "session"
+        guard let statusBarMetric = StatusBarMetric(rawValue: metric),
+              provider.supportedStatusBarMetrics.contains(statusBarMetric) else {
+            return StatusBarMetric.session.rawValue
         }
+        return statusBarMetric.rawValue
     }
 
     private func statusBarValue(for provider: StatusBarUsageProvider, metric: String) -> Double? {
@@ -186,7 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func codexValue(metric: String) -> Double? {
-        guard let limits = cachedCodexLimits else { return nil }
+        guard let limits = codexUsage?.latestLimits else { return nil }
 
         switch metric {
         case "session":

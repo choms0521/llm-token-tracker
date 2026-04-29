@@ -485,16 +485,6 @@ enum StatusBarIcon: String, CaseIterable, Identifiable {
     }
 }
 
-enum StatusBarMetric: String, CaseIterable, Identifiable {
-    case session
-    case weekly
-    case opus = "Opus"
-    case sonnet = "Sonnet"
-    case haiku = "Haiku"
-
-    var id: String { rawValue }
-}
-
 struct GeneralSettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("pollingInterval") private var pollingInterval = 90.0
@@ -648,9 +638,9 @@ struct GeneralSettingsView: View {
         Binding(
             get: { statusBarProvider },
             set: { newValue in
-                if newValue != .claude,
-                   !["session", "weekly"].contains(statusBarMetric) {
-                    statusBarMetric = "session"
+                let currentMetric = StatusBarMetric(rawValue: statusBarMetric) ?? .session
+                if !newValue.supportedStatusBarMetrics.contains(currentMetric) {
+                    statusBarMetric = StatusBarMetric.session.rawValue
                 }
                 statusBarProvider = newValue
             }
