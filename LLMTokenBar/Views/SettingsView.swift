@@ -485,19 +485,10 @@ enum StatusBarIcon: String, CaseIterable, Identifiable {
     }
 }
 
-enum StatusBarMetric: String, CaseIterable, Identifiable {
-    case session
-    case weekly
-    case opus = "Opus"
-    case sonnet = "Sonnet"
-    case haiku = "Haiku"
-
-    var id: String { rawValue }
-}
-
 struct GeneralSettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("pollingInterval") private var pollingInterval = 90.0
+    @AppStorage(StatusBarUsageProvider.storageKey) private var statusBarProvider = StatusBarUsageProvider.defaultValue
     @AppStorage("statusBarMetric") private var statusBarMetric = "session"
     @AppStorage("statusBarIcon") private var statusBarIcon = StatusBarIcon.default.rawValue
     @AppStorage("iconMode") private var iconMode = "static"
@@ -507,13 +498,23 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section("Menu Bar Display") {
+                Picker("Provider to Display", selection: statusBarProviderSelection) {
+                    ForEach(StatusBarUsageProvider.allCases) { provider in
+                        Label(provider.displayName, systemImage: provider.provider.iconName)
+                            .tag(provider)
+                    }
+                }
+                .pickerStyle(.menu)
+
                 Picker("Metric to Display", selection: $statusBarMetric) {
                     Text("Session Usage (5 Hours)").tag("session")
                     Text("Weekly Usage (7 Days)").tag("weekly")
-                    Divider()
-                    Text("Opus (Weekly)").tag("opus")
-                    Text("Sonnet (Weekly)").tag("sonnet")
-                    Text("Haiku (Weekly)").tag("haiku")
+                    if statusBarProvider == .claude {
+                        Divider()
+                        Text("Opus (Weekly)").tag("opus")
+                        Text("Sonnet (Weekly)").tag("sonnet")
+                        Text("Haiku (Weekly)").tag("haiku")
+                    }
                 }
                 .pickerStyle(.menu)
 
@@ -631,5 +632,20 @@ struct GeneralSettingsView: View {
         } message: {
             Text("The app needs to restart to apply the language change.")
         }
+    }
+
+    private var statusBarProviderSelection: Binding<StatusBarUsageProvider> {
+        Binding(
+            get: { statusBarProvider },
+            set: { newValue in
+                guard let currentMetric = StatusBarMetric(rawValue: statusBarMetric),
+                      newValue.supportedStatusBarMetrics.contains(currentMetric) else {
+                    statusBarMetric = StatusBarMetric.session.rawValue
+                    statusBarProvider = newValue
+                    return
+                }
+                statusBarProvider = newValue
+            }
+        )
     }
 }

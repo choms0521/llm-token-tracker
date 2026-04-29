@@ -1,6 +1,6 @@
 import Foundation
 
-enum Provider: String, CaseIterable, Identifiable, Codable {
+enum Provider: String, CaseIterable, Identifiable, Codable, Sendable {
     case claude
     case gemini
     case openai
@@ -38,4 +38,53 @@ enum Provider: String, CaseIterable, Identifiable, Codable {
         case .kimi: return "KimiBlue"
         }
     }
+}
+
+enum StatusBarUsageProvider: String, CaseIterable, Identifiable, Sendable {
+    case claude
+    case openai
+    case minimax
+    case kimi
+
+    static let storageKey = "statusBarProvider"
+    static let defaultValue = StatusBarUsageProvider.claude
+
+    var id: String { rawValue }
+
+    var provider: Provider {
+        switch self {
+        case .claude: return .claude
+        case .openai: return .openai
+        case .minimax: return .minimax
+        case .kimi: return .kimi
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .openai:
+            return "Codex"
+        default:
+            return provider.displayName
+        }
+    }
+
+    var supportedStatusBarMetrics: [StatusBarMetric] {
+        switch self {
+        case .claude:
+            return StatusBarMetric.allCases
+        case .openai, .minimax, .kimi:
+            return [.session, .weekly]
+        }
+    }
+}
+
+enum StatusBarMetric: String, CaseIterable, Identifiable, Sendable {
+    case session
+    case weekly
+    case opus
+    case sonnet
+    case haiku
+
+    var id: String { rawValue }
 }

@@ -9,16 +9,24 @@ final class StatusBarController: NSObject {
     private let historyStore: UsageHistoryStore
     private let tokenStats: TokenStatsService
     private let displayConfig: ProviderDisplayConfig
+    private let codexUsage: CodexUsageStore
     private var settingsWindow: NSWindow?
     private var eventMonitor: Any?
     private var iconObserver: NSObjectProtocol?
     private var animationController: MenuBarAnimationController?
 
-    init(manager: UsagePollingManager, historyStore: UsageHistoryStore, tokenStats: TokenStatsService, displayConfig: ProviderDisplayConfig) {
+    init(
+        manager: UsagePollingManager,
+        historyStore: UsageHistoryStore,
+        tokenStats: TokenStatsService,
+        displayConfig: ProviderDisplayConfig,
+        codexUsage: CodexUsageStore
+    ) {
         self.manager = manager
         self.historyStore = historyStore
         self.tokenStats = tokenStats
         self.displayConfig = displayConfig
+        self.codexUsage = codexUsage
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.popover = NSPopover()
         super.init()
@@ -29,7 +37,7 @@ final class StatusBarController: NSObject {
     }
 
     private func setupPopover() {
-        let popoverView = PopoverView(manager: manager, tokenStats: tokenStats, displayConfig: displayConfig, onOpenSettings: { [weak self] in
+        let popoverView = PopoverView(manager: manager, tokenStats: tokenStats, displayConfig: displayConfig, codexUsage: codexUsage, onOpenSettings: { [weak self] in
             self?.openSettings()
         })
 
@@ -103,6 +111,7 @@ final class StatusBarController: NSObject {
         } else {
             guard let button = statusItem.button else { return }
             NSApp.activate(ignoringOtherApps: true)
+            codexUsage.refresh()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             if let popoverWindow = popover.contentViewController?.view.window {
                 popoverWindow.level = .floating

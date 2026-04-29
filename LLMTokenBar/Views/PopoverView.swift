@@ -4,8 +4,8 @@ struct PopoverView: View {
     @ObservedObject var manager: UsagePollingManager
     @ObservedObject var tokenStats: TokenStatsService
     @ObservedObject var displayConfig: ProviderDisplayConfig
+    @ObservedObject var codexUsage: CodexUsageStore
     var onOpenSettings: () -> Void
-    private let codexParser = CodexSessionParser()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -31,7 +31,10 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button(action: { manager.refresh() }) {
+                Button(action: {
+                    manager.refresh()
+                    codexUsage.refresh()
+                }) {
                     if manager.isLoading {
                         ProgressView()
                             .scaleEffect(0.6)
@@ -156,7 +159,7 @@ struct PopoverView: View {
 
     @ViewBuilder
     private var codexRateLimitView: some View {
-        if let limits = codexParser.latestRateLimits() {
+        if let limits = codexUsage.latestLimits {
             VStack(alignment: .leading, spacing: 6) {
                 providerHeader(name: "OpenAI Codex", icon: "cpu", color: .green)
 

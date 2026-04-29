@@ -73,6 +73,42 @@ final class UsageHistoryStore: ObservableObject {
         saveToDisk()
     }
 
+    func recordCodexSnapshots(_ codexSnapshots: [CodexSessionParser.RateLimitSnapshot]) {
+        guard !codexSnapshots.isEmpty else { return }
+
+        var changed = false
+        var existingTimestampsBySecond = Dictionary(grouping: snapshots.filter { $0.provider == .openai }) { snapshot in
+            Int(snapshot.timestamp.timeIntervalSince1970.rounded(.down))
+        }.mapValues { snapshots in
+            snapshots.map(\.timestamp)
+        }
+
+        for codexSnapshot in codexSnapshots {
+            let timestamp = codexSnapshot.timestamp
+            let timestampKey = Int(timestamp.timeIntervalSince1970.rounded(.down))
+            let isDuplicate = ((timestampKey - 1)...(timestampKey + 1)).contains { key in
+                existingTimestampsBySecond[key]?.contains { existing in
+                    abs(existing.timeIntervalSince(timestamp)) < 1
+                } ?? false
+            }
+            guard !isDuplicate else { continue }
+
+            snapshots.append(UsageSnapshot(
+                timestamp: timestamp,
+                provider: .openai,
+                sessionUtilization: codexSnapshot.limits.primary?.usedPercent,
+                weeklyUtilization: codexSnapshot.limits.secondary?.usedPercent,
+                modelUtilizations: [:]
+            ))
+            existingTimestampsBySecond[timestampKey, default: []].append(timestamp)
+            changed = true
+        }
+
+        guard changed else { return }
+        pruneOld()
+        saveToDiskInBackground(snapshots)
+    }
+
     func record(from usage: UsageData) {
         var modelUtils: [String: Double] = [:]
         for model in usage.modelUsages {
@@ -149,6 +185,17 @@ final class UsageHistoryStore: ObservableObject {
     }
 
     private func saveToDisk() {
+        Self.write(snapshots: snapshots, to: storePath)
+    }
+
+    private func saveToDiskInBackground(_ snapshots: [UsageSnapshot]) {
+        let storePath = storePath
+        Task.detached(priority: .utility) {
+            Self.write(snapshots: snapshots, to: storePath)
+        }
+    }
+
+    private nonisolated static func write(snapshots: [UsageSnapshot], to storePath: String) {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = .prettyPrinted
@@ -164,7 +211,7 @@ final class UsageHistoryStore: ObservableObject {
         do {
             try data.write(to: URL(fileURLWithPath: storePath), options: .atomic)
         } catch {
-            logger.error("히스토리 저장 실패 (\(self.storePath)): \(error.localizedDescription)")
+            logger.error("히스토리 저장 실패 (\(storePath)): \(error.localizedDescription)")
         }
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct UsageSnapshot: Codable, Identifiable {
+struct UsageSnapshot: Codable, Identifiable, Sendable {
     let id: UUID
     let timestamp: Date
     let provider: Provider
