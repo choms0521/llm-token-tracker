@@ -64,6 +64,13 @@ final class MiniMaxUsageService: UsageServiceProtocol {
         }
     }
 
+    /// 코딩 플랜 사용량을 표시할 모델을 선택한다.
+    /// 우선 현재 응답의 "general" 모델을 찾고, 없으면 구버전 "MiniMax-M..." 접두사로 폴백한다.
+    static func selectCodingPlanModel(from models: [MiniMaxModelRemain]) -> MiniMaxModelRemain? {
+        models.first { $0.modelName == Constants.MiniMax.targetModelName }
+            ?? models.first { $0.modelName.hasPrefix(Constants.MiniMax.legacyModelPrefix) }
+    }
+
     private func parseResponse(_ data: Data) throws -> UsageData {
         let response: MiniMaxUsageResponse
         do {
@@ -79,9 +86,7 @@ final class MiniMaxUsageService: UsageServiceProtocol {
             )
         }
 
-        guard let model = response.modelRemains.first(where: {
-            $0.modelName == Constants.MiniMax.targetModelName
-        }) else {
+        guard let model = Self.selectCodingPlanModel(from: response.modelRemains) else {
             return .empty(for: .minimax)
         }
 

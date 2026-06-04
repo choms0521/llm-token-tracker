@@ -53,6 +53,58 @@ final class MiniMaxUsageParsingTests: XCTestCase {
         XCTAssertEqual(general?.modelName, "general")
     }
 
+    @MainActor
+    func testSelectCodingPlanModelPrefersGeneral() throws {
+        let response = try decode(currentFormatJSON)
+        let selected = MiniMaxUsageService.selectCodingPlanModel(from: response.modelRemains)
+        // "general"과 "video"가 함께 있어도 "general"을 선택해야 한다.
+        XCTAssertEqual(selected?.modelName, "general")
+    }
+
+    @MainActor
+    func testSelectCodingPlanModelFallsBackToLegacyPrefix() throws {
+        // 구버전 응답: model_name이 "MiniMax-M..." 접두사이고 "general"이 없는 경우.
+        let json = """
+        {
+            "model_remains": [{
+                "start_time": 0, "end_time": 0, "remains_time": 0,
+                "current_interval_total_count": 4500,
+                "current_interval_usage_count": 4050,
+                "current_weekly_total_count": 4500,
+                "current_weekly_usage_count": 4500,
+                "weekly_start_time": 0, "weekly_end_time": 0, "weekly_remains_time": 0,
+                "model_name": "MiniMax-M1"
+            }],
+            "base_resp": { "status_code": 0, "status_msg": "success" }
+        }
+        """
+        let response = try decode(json)
+        let selected = MiniMaxUsageService.selectCodingPlanModel(from: response.modelRemains)
+        XCTAssertEqual(selected?.modelName, "MiniMax-M1", "구버전 접두사 모델로 폴백해야 한다")
+        // 폴백 모델은 count 기반 계산을 사용: total 4500, 잔여 4050 -> 사용 450 -> 10%
+        XCTAssertEqual(selected?.intervalUtilization ?? -1, 10.0, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testSelectCodingPlanModelReturnsNilWhenNoMatch() throws {
+        // "general"도 "MiniMax-M..."도 없는 경우 nil을 반환해야 한다.
+        let json = """
+        {
+            "model_remains": [{
+                "start_time": 0, "end_time": 0, "remains_time": 0,
+                "current_interval_total_count": 0, "current_interval_usage_count": 0,
+                "current_weekly_total_count": 0, "current_weekly_usage_count": 0,
+                "weekly_start_time": 0, "weekly_end_time": 0, "weekly_remains_time": 0,
+                "model_name": "video"
+            }],
+            "base_resp": { "status_code": 0, "status_msg": "success" }
+        }
+        """
+        let response = try decode(json)
+        let selected = MiniMaxUsageService.selectCodingPlanModel(from: response.modelRemains)
+        XCTAssertNil(selected, "매칭되는 코딩 플랜 모델이 없으면 nil이어야 한다")
+    }
+
     func testRemainingPercentMapsToUtilization() throws {
         let response = try decode(currentFormatJSON)
         let general = try XCTUnwrap(response.modelRemains.first { $0.modelName == "general" })
