@@ -80,23 +80,23 @@ final class MiniMaxUsageService: UsageServiceProtocol {
         }
 
         guard let model = response.modelRemains.first(where: {
-            $0.modelName.hasPrefix(Constants.MiniMax.targetModelPrefix)
+            $0.modelName == Constants.MiniMax.targetModelName
         }) else {
             return .empty(for: .minimax)
         }
 
-        let intervalUsed = model.currentIntervalTotalCount - model.currentIntervalUsageCount
+        // 2026-06 기준 API는 used/total 횟수 대신 잔여 비율(%)만 제공하므로
+        // 부제에는 모델명만 표기하고, 사용률은 카드 우측 퍼센트로 표시한다.
         let sessionUsage = UsageEntry(
             label: String(localized: "Session Usage"),
-            sublabel: "\(model.modelName) (\(intervalUsed)/\(model.currentIntervalTotalCount))",
+            sublabel: model.modelName,
             utilization: model.intervalUtilization,
             resetsAt: model.intervalResetsAt
         )
 
-        let weeklyUsed = model.currentWeeklyTotalCount - model.currentWeeklyUsageCount
         let weeklyUsage = UsageEntry(
             label: String(localized: "Weekly Usage"),
-            sublabel: "\(model.modelName) (\(weeklyUsed)/\(model.currentWeeklyTotalCount))",
+            sublabel: model.modelName,
             utilization: model.weeklyUtilization,
             resetsAt: model.weeklyResetsAt
         )
