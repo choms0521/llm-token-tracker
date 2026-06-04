@@ -27,7 +27,11 @@ enum Constants {
     enum MiniMax {
         static let usageURL = "https://www.minimax.io/v1/api/openplatform/coding_plan/remains"
         static let apiKeyEnvVar = "MINIMAX_API_KEY"
-        static let targetModelPrefix = "MiniMax-M"
+        // coding_plan/remains 응답의 텍스트(코딩) 플랜 모델 식별자.
+        // 2026-06 기준 "general"/"video"로 내려옴.
+        static let targetModelName = "general"
+        // 구버전 응답 호환: 과거에는 모델명이 "MiniMax-M..." 접두사로 내려왔음.
+        static let legacyModelPrefix = "MiniMax-M"
         static let modelPrefixes = ["minimax", "hailuo"]
     }
 

@@ -64,6 +64,13 @@ final class MiniMaxUsageService: UsageServiceProtocol {
         }
     }
 
+    /// 코딩 플랜 사용량을 표시할 모델을 선택한다.
+    /// 우선 현재 응답의 "general" 모델을 찾고, 없으면 구버전 "MiniMax-M..." 접두사로 폴백한다.
+    static func selectCodingPlanModel(from models: [MiniMaxModelRemain]) -> MiniMaxModelRemain? {
+        models.first { $0.modelName == Constants.MiniMax.targetModelName }
+            ?? models.first { $0.modelName.hasPrefix(Constants.MiniMax.legacyModelPrefix) }
+    }
+
     private func parseResponse(_ data: Data) throws -> UsageData {
         let response: MiniMaxUsageResponse
         do {
@@ -79,24 +86,22 @@ final class MiniMaxUsageService: UsageServiceProtocol {
             )
         }
 
-        guard let model = response.modelRemains.first(where: {
-            $0.modelName.hasPrefix(Constants.MiniMax.targetModelPrefix)
-        }) else {
+        guard let model = Self.selectCodingPlanModel(from: response.modelRemains) else {
             return .empty(for: .minimax)
         }
 
-        let intervalUsed = model.currentIntervalTotalCount - model.currentIntervalUsageCount
+        // 2026-06 기준 API는 used/total 횟수 대신 잔여 비율(%)만 제공하므로
+        // 부제에는 모델명만 표기하고, 사용률은 카드 우측 퍼센트로 표시한다.
         let sessionUsage = UsageEntry(
             label: String(localized: "Session Usage"),
-            sublabel: "\(model.modelName) (\(intervalUsed)/\(model.currentIntervalTotalCount))",
+            sublabel: model.modelName,
             utilization: model.intervalUtilization,
             resetsAt: model.intervalResetsAt
         )
 
-        let weeklyUsed = model.currentWeeklyTotalCount - model.currentWeeklyUsageCount
         let weeklyUsage = UsageEntry(
             label: String(localized: "Weekly Usage"),
-            sublabel: "\(model.modelName) (\(weeklyUsed)/\(model.currentWeeklyTotalCount))",
+            sublabel: model.modelName,
             utilization: model.weeklyUtilization,
             resetsAt: model.weeklyResetsAt
         )

@@ -95,8 +95,10 @@ struct MiniMaxModelRemain: Decodable {
     let remainsTime: Int64
     let currentIntervalTotalCount: Int
     let currentIntervalUsageCount: Int
+    let currentIntervalRemainingPercent: Int?
     let currentWeeklyTotalCount: Int
     let currentWeeklyUsageCount: Int
+    let currentWeeklyRemainingPercent: Int?
     let weeklyStartTime: Int64
     let weeklyEndTime: Int64
     let weeklyRemainsTime: Int64
@@ -108,28 +110,45 @@ struct MiniMaxModelRemain: Decodable {
         case remainsTime = "remains_time"
         case currentIntervalTotalCount = "current_interval_total_count"
         case currentIntervalUsageCount = "current_interval_usage_count"
+        case currentIntervalRemainingPercent = "current_interval_remaining_percent"
         case currentWeeklyTotalCount = "current_weekly_total_count"
         case currentWeeklyUsageCount = "current_weekly_usage_count"
+        case currentWeeklyRemainingPercent = "current_weekly_remaining_percent"
         case weeklyStartTime = "weekly_start_time"
         case weeklyEndTime = "weekly_end_time"
         case weeklyRemainsTime = "weekly_remains_time"
     }
 
     // API 엔드포인트: /coding_plan/remains
-    // usage_count 필드는 API 필드명과 달리 실제로는 '잔여 횟수'를 의미함.
-    // 예: total=4500, usage_count=4500 → 4500번 남음 → 사용률 0%
-    // 실제 API 테스트로 확인된 동작 (2026-04-14)
+    // 2026-06 기준 응답이 변경됨: total/usage_count는 0으로 내려오고,
+    // 대신 current_interval_remaining_percent / current_weekly_remaining_percent
+    // 필드로 '잔여 비율(%)'을 제공함. 예: remaining_percent=99 → 99% 잔여 → 사용률 1%.
+    // 구버전 응답(count 기반) 호환을 위해 remaining_percent가 없을 때만 count로 폴백한다.
 
     var intervalUtilization: Double {
-        guard currentIntervalTotalCount > 0 else { return 0 }
-        let used = currentIntervalTotalCount - currentIntervalUsageCount
-        return Double(used) / Double(currentIntervalTotalCount) * 100.0
+        if let remaining = currentIntervalRemainingPercent {
+            return Self.utilization(fromRemainingPercent: remaining)
+        }
+        return Self.utilization(total: currentIntervalTotalCount, usageCount: currentIntervalUsageCount)
     }
 
     var weeklyUtilization: Double {
-        guard currentWeeklyTotalCount > 0 else { return 0 }
-        let used = currentWeeklyTotalCount - currentWeeklyUsageCount
-        return Double(used) / Double(currentWeeklyTotalCount) * 100.0
+        if let remaining = currentWeeklyRemainingPercent {
+            return Self.utilization(fromRemainingPercent: remaining)
+        }
+        return Self.utilization(total: currentWeeklyTotalCount, usageCount: currentWeeklyUsageCount)
+    }
+
+    private static func utilization(fromRemainingPercent remaining: Int) -> Double {
+        let clamped = min(max(remaining, 0), 100)
+        return Double(100 - clamped)
+    }
+
+    // 구버전 폴백: usage_count는 실제로는 '잔여 횟수'를 의미함.
+    private static func utilization(total: Int, usageCount: Int) -> Double {
+        guard total > 0 else { return 0 }
+        let used = total - usageCount
+        return Double(used) / Double(total) * 100.0
     }
 
     var intervalResetsAt: Date {
