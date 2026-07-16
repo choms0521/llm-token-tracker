@@ -163,24 +163,24 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 6) {
                 providerHeader(name: "OpenAI Codex", icon: "cpu", color: .green)
 
-                if let primary = limits.primary {
-                    let resetDate = primary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+                if let session = limits.sessionLimit {
+                    let resetDate = session.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
                     let isReset = resetDate.map { $0 < Date() } ?? false
                     UsageCardView(entry: UsageEntry(
                         label: String(localized: "Session Usage (5 Hours)"),
                         sublabel: "Codex \(limits.planType ?? "plus")",
-                        utilization: isReset ? 0 : (primary.usedPercent ?? 0),
+                        utilization: isReset ? 0 : (session.usedPercent ?? 0),
                         resetsAt: isReset ? nil : resetDate
                     ))
                 }
 
-                if let secondary = limits.secondary {
-                    let resetDate = secondary.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+                if let weekly = limits.weeklyLimit {
+                    let resetDate = weekly.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
                     let isReset = resetDate.map { $0 < Date() } ?? false
                     UsageCardView(entry: UsageEntry(
                         label: String(localized: "Weekly Usage (7 Days)"),
                         sublabel: "Codex \(limits.planType ?? "plus")",
-                        utilization: isReset ? 0 : (secondary.usedPercent ?? 0),
+                        utilization: isReset ? 0 : (weekly.usedPercent ?? 0),
                         resetsAt: isReset ? nil : resetDate
                     ))
                 }
