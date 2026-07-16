@@ -913,6 +913,16 @@
         }
       }
     },
+    "No Limit" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한도 없음"
+          }
+        }
+      }
+    },
     "No usage today" : {
       "localizations" : {
         "ko" : {
@@ -936,6 +946,16 @@
     },
     "OpenAI Codex" : {
 
+    },
+    "OpenAI temporarily lifted the 5-hour limit" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI가 5시간 한도를 일시 해제했습니다"
+          }
+        }
+      }
     },
     "Opus (Weekly)" : {
       "localizations" : {
