@@ -176,9 +176,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         switch metric {
         case "session":
-            return limits.primary?.usedPercent
+            return limits.sessionLimit?.usedPercent
         case "weekly":
-            return limits.secondary?.usedPercent
+            return limits.weeklyLimit?.usedPercent
         default:
             return nil
         }

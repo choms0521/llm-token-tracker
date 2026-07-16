@@ -73,6 +73,42 @@ struct CodexRateLimit: Decodable {
     }
 }
 
+extension CodexRateLimits {
+    // Codex CLI emits either the legacy layout (primary = 5h session,
+    // secondary = weekly) or the newer layout (primary = weekly, secondary = null),
+    // so limits are classified by window length instead of position.
+    private static let sessionWindowMaxMinutes = 1440
+
+    var sessionLimit: CodexRateLimit? {
+        if let matched = firstLimit(where: { $0 <= Self.sessionWindowMaxMinutes }) {
+            return matched
+        }
+        // Snapshots without window info follow the legacy positional layout
+        if let primary, primary.windowMinutes == nil {
+            return primary
+        }
+        return nil
+    }
+
+    var weeklyLimit: CodexRateLimit? {
+        if let matched = firstLimit(where: { $0 > Self.sessionWindowMaxMinutes }) {
+            return matched
+        }
+        // Snapshots without window info follow the legacy positional layout
+        if let secondary, secondary.windowMinutes == nil {
+            return secondary
+        }
+        return nil
+    }
+
+    private func firstLimit(where matchesWindow: (Int) -> Bool) -> CodexRateLimit? {
+        [primary, secondary].compactMap { $0 }.first { limit in
+            guard let minutes = limit.windowMinutes else { return false }
+            return matchesWindow(minutes)
+        }
+    }
+}
+
 private struct CodexTokenUsage: Decodable {
     let inputTokens: Int?
     let outputTokens: Int?

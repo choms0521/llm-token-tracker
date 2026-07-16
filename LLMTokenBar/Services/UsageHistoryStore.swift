@@ -43,8 +43,8 @@ final class UsageHistoryStore: ObservableObject {
 
     func recordCodexLimits(_ limits: CodexRateLimits) {
         recordCodexSnapshot(
-            sessionUtilization: limits.primary?.usedPercent,
-            weeklyUtilization: limits.secondary?.usedPercent,
+            sessionUtilization: limits.sessionLimit?.usedPercent,
+            weeklyUtilization: limits.weeklyLimit?.usedPercent,
             timestamp: now()
         )
     }
@@ -76,35 +76,24 @@ final class UsageHistoryStore: ObservableObject {
     func recordCodexSnapshots(_ codexSnapshots: [CodexSessionParser.RateLimitSnapshot]) {
         guard !codexSnapshots.isEmpty else { return }
 
-        var changed = false
-        var existingTimestampsBySecond = Dictionary(grouping: snapshots.filter { $0.provider == .openai }) { snapshot in
-            Int(snapshot.timestamp.timeIntervalSince1970.rounded(.down))
-        }.mapValues { snapshots in
-            snapshots.map(\.timestamp)
-        }
-
+        // Session files are the source of truth for Codex history: rebuild it
+        // wholesale so snapshots recorded with a stale window layout are repaired.
+        var seenTimestampKeys: Set<Int> = []
+        var rebuilt: [UsageSnapshot] = []
         for codexSnapshot in codexSnapshots {
-            let timestamp = codexSnapshot.timestamp
-            let timestampKey = Int(timestamp.timeIntervalSince1970.rounded(.down))
-            let isDuplicate = ((timestampKey - 1)...(timestampKey + 1)).contains { key in
-                existingTimestampsBySecond[key]?.contains { existing in
-                    abs(existing.timeIntervalSince(timestamp)) < 1
-                } ?? false
-            }
-            guard !isDuplicate else { continue }
+            let timestampKey = Int(codexSnapshot.timestamp.timeIntervalSince1970.rounded(.down))
+            guard seenTimestampKeys.insert(timestampKey).inserted else { continue }
 
-            snapshots.append(UsageSnapshot(
-                timestamp: timestamp,
+            rebuilt.append(UsageSnapshot(
+                timestamp: codexSnapshot.timestamp,
                 provider: .openai,
-                sessionUtilization: codexSnapshot.limits.primary?.usedPercent,
-                weeklyUtilization: codexSnapshot.limits.secondary?.usedPercent,
+                sessionUtilization: codexSnapshot.limits.sessionLimit?.usedPercent,
+                weeklyUtilization: codexSnapshot.limits.weeklyLimit?.usedPercent,
                 modelUtilizations: [:]
             ))
-            existingTimestampsBySecond[timestampKey, default: []].append(timestamp)
-            changed = true
         }
 
-        guard changed else { return }
+        snapshots = snapshots.filter { $0.provider != .openai } + rebuilt
         pruneOld()
         saveToDiskInBackground(snapshots)
     }

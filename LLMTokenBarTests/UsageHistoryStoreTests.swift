@@ -88,6 +88,45 @@ final class UsageHistoryStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshots.first?.timestamp, recentSnapshot.timestamp)
     }
 
+    @MainActor
+    func testRecordCodexSnapshotsRebuildsOpenAIHistoryWithWindowClassification() throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let misclassified = UsageSnapshot(
+            timestamp: now.addingTimeInterval(-600),
+            provider: .openai,
+            sessionUtilization: 16.0,
+            weeklyUtilization: nil
+        )
+        let claudeSnapshot = UsageSnapshot(
+            timestamp: now.addingTimeInterval(-500),
+            provider: .claude,
+            sessionUtilization: 30,
+            weeklyUtilization: 40
+        )
+
+        let storeURL = temporaryDirectory.appendingPathComponent("usage-history.json")
+        try writeSnapshots([misclassified, claudeSnapshot], to: storeURL)
+        let store = UsageHistoryStore(storePath: storeURL.path, now: { now })
+
+        let weeklyOnlyLimits = CodexRateLimits(
+            primary: CodexRateLimit(usedPercent: 16.0, windowMinutes: 10080, resetsAt: nil),
+            secondary: nil,
+            planType: "plus"
+        )
+        store.recordCodexSnapshots([
+            CodexSessionParser.RateLimitSnapshot(
+                timestamp: now.addingTimeInterval(-600),
+                limits: weeklyOnlyLimits
+            )
+        ])
+
+        let openAISnapshots = store.snapshots.filter { $0.provider == .openai }
+        XCTAssertEqual(openAISnapshots.count, 1)
+        XCTAssertNil(openAISnapshots.first?.sessionUtilization)
+        XCTAssertEqual(openAISnapshots.first?.weeklyUtilization, 16.0)
+        XCTAssertEqual(store.snapshots.filter { $0.provider == .claude }.count, 1)
+    }
+
     private func sampleUsageData(timestamp: Date) -> UsageData {
         UsageData(
             provider: .claude,
