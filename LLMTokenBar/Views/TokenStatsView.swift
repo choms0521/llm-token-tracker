@@ -25,6 +25,19 @@ struct ProviderFilter: Identifiable, Equatable {
     let isHidden: Bool
 
     var id: String { provider?.rawValue ?? Self.allID }
+
+    /// Display 설정의 순서를 그대로 따르되, 꺼진 provider는 시크릿을 해제했을 때만 노출한다.
+    /// 노출될 때도 원래 자리에 그대로 끼어들어 두 화면의 순서가 어긋나지 않는다.
+    static func makeFilters(
+        items: [ProviderDisplayItem],
+        showsHiddenProviders: Bool
+    ) -> [ProviderFilter] {
+        let ordered = items.map {
+            ProviderFilter(provider: $0.provider, isHidden: !$0.isEnabled)
+        }
+        return [ProviderFilter(provider: nil, isHidden: false)]
+            + ordered.filter { showsHiddenProviders || !$0.isHidden }
+    }
 }
 
 struct TokenStatsView: View {
@@ -39,13 +52,11 @@ struct TokenStatsView: View {
     @State private var showsHiddenProviders = false
     @AppStorage("includeCacheTokens") private var includeCacheTokens = true
 
-    /// Display 설정의 순서를 그대로 따르되, 꺼진 provider는 시크릿을 해제했을 때만 노출한다.
     private var providerFilters: [ProviderFilter] {
-        let ordered = config.items.map {
-            ProviderFilter(provider: $0.provider, isHidden: !$0.isEnabled)
-        }
-        return [ProviderFilter(provider: nil, isHidden: false)]
-            + ordered.filter { showsHiddenProviders || !$0.isHidden }
+        ProviderFilter.makeFilters(
+            items: config.items,
+            showsHiddenProviders: showsHiddenProviders
+        )
     }
 
     private var hasHiddenProviders: Bool {
