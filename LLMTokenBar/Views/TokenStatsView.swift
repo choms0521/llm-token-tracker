@@ -295,32 +295,38 @@ struct TokenStatsView: View {
 
     // MARK: - Provider Selector
 
+    /// 칩은 고유 너비를 유지하고, provider가 늘어나면 균등 분할 대신 가로 스크롤로 처리한다.
+    /// 균등 분할이면 칩이 추가·제거될 때마다 나머지 칩 너비가 함께 변해 화면이 흔들린다.
     private var providerSelector: some View {
-        HStack(spacing: 0) {
-            ForEach(providerFilters) { filter in
-                Button(action: { selectedProvider = filter.id }) {
-                    providerFilterLabel(filter)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 2) {
+                ForEach(providerFilters) { filter in
+                    Button(action: { selectedProvider = filter.id }) {
+                        providerFilterLabel(filter)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-            }
 
-            if hasHiddenProviders {
-                Button(action: toggleHiddenProviders) {
-                    Image(systemName: "ellipsis")
-                        .font(.pretendard(size: 12, weight: showsHiddenProviders ? .semibold : .regular))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .contentShape(Rectangle())
-                        .background(showsHiddenProviders ? Color.accentColor.opacity(0.15) : .clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                if hasHiddenProviders {
+                    Button(action: toggleHiddenProviders) {
+                        Image(systemName: "ellipsis")
+                            .font(.pretendard(size: 12))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                            .background(chipBackground(isSelected: showsHiddenProviders))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    .help(showsHiddenProviders
+                          ? "Hide providers turned off in Display settings"
+                          : "Show providers turned off in Display settings")
                 }
-                .buttonStyle(.plain)
-                .help(showsHiddenProviders
-                      ? "Hide providers turned off in Display settings"
-                      : "Show providers turned off in Display settings")
             }
+            .padding(3)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .background(.quaternary.opacity(0.3))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .animation(.easeInOut(duration: 0.18), value: showsHiddenProviders)
@@ -328,21 +334,34 @@ struct TokenStatsView: View {
 
     private func providerFilterLabel(_ filter: ProviderFilter) -> some View {
         let isSelected = selectedProvider == filter.id
-        return Group {
-            if let provider = filter.provider {
-                Text(provider.displayName)
-            } else {
-                Text("All")
-            }
+        return ZStack {
+            // 선택 시 글꼴이 굵어져도 칩 너비가 변하지 않도록 가장 굵은 상태로 자리를 잡아 둔다.
+            filterText(filter)
+                .font(.pretendard(size: 12, weight: .semibold))
+                .hidden()
+
+            filterText(filter)
+                .font(.pretendard(size: 12, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(filter.isHidden ? .secondary : .primary)
         }
-        .font(.pretendard(size: 12, weight: isSelected ? .semibold : .regular))
-        .foregroundStyle(filter.isHidden ? .secondary : .primary)
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
-        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .background(isSelected ? Color.accentColor.opacity(0.15) : .clear)
+        .background(chipBackground(isSelected: isSelected))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    @ViewBuilder
+    private func filterText(_ filter: ProviderFilter) -> some View {
+        if let provider = filter.provider {
+            Text(provider.displayName)
+        } else {
+            Text("All")
+        }
+    }
+
+    private func chipBackground(isSelected: Bool) -> Color {
+        isSelected ? Color.accentColor.opacity(0.15) : .clear
     }
 
     private func toggleHiddenProviders() {
