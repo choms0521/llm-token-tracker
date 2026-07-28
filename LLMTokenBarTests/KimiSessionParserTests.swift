@@ -127,10 +127,9 @@ final class KimiSessionParserTests: XCTestCase {
             agent: "main",
             lines: [
                 usageRecord(model: "kimi-code/k3", inputOther: 100, output: 0, cacheRead: 0, cacheCreation: 0),
-                #"""
-                {"type":"usage.record","model":"kimi-code/k3","usage":{"inputOther":100,"output":0,\#
-                "inputCacheRead":0,"inputCacheCreation":0},"time":1784540305000}
-                """#,
+                // usageScope 키만 빠진 유효한 한 줄짜리 JSON. 줄바꿈 이음을 쓰지 않아
+                // 디코딩 실패가 아니라 스코프 누락으로 걸러지는 것임이 분명하다.
+                #"{"type":"usage.record","model":"kimi-code/k3","usage":{"inputOther":100,"output":0,"inputCacheRead":0,"inputCacheCreation":0},"time":1784540305000}"#,
             ]
         )
 
