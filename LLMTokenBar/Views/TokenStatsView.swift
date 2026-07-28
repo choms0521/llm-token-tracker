@@ -319,9 +319,10 @@ struct TokenStatsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
-                    .help(showsHiddenProviders
-                          ? "Hide providers turned off in Display settings"
-                          : "Show providers turned off in Display settings")
+                    // 이미지 전용 버튼이라 VoiceOver가 읽을 라벨을 별도로 지정한다.
+                    // .help는 도움말일 뿐 접근성 라벨을 대체하지 않는다.
+                    .accessibilityLabel(hiddenProvidersToggleLabel)
+                    .help(hiddenProvidersToggleLabel)
                 }
             }
             .padding(3)
@@ -362,6 +363,14 @@ struct TokenStatsView: View {
 
     private func chipBackground(isSelected: Bool) -> Color {
         isSelected ? Color.accentColor.opacity(0.15) : .clear
+    }
+
+    /// 접근성 라벨과 도움말이 같은 문구를 쓰도록 한곳에서 관리한다.
+    /// 반환 타입을 명시해 두 리터럴이 모두 `LocalizedStringKey`로 해소되도록 보장한다.
+    private var hiddenProvidersToggleLabel: LocalizedStringKey {
+        showsHiddenProviders
+            ? "Hide providers turned off in Display settings"
+            : "Show providers turned off in Display settings"
     }
 
     private func toggleHiddenProviders() {

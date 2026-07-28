@@ -28,6 +28,31 @@ final class KimiSessionParserTests: XCTestCase {
         XCTAssertEqual(KimiSessionParser.normalizeModelId("kimi-code/kimi-for-coding"), "kimi-for-coding")
     }
 
+    /// 모델 ID는 집계 키이므로 대소문자만 다른 값이 서로 다른 모델로 갈라져서는 안 된다.
+    func testNormalizeModelIdLowercasesConsistently() {
+        XCTAssertEqual(KimiSessionParser.normalizeModelId("Kimi-Code/K3"), "kimi-k3")
+        XCTAssertEqual(KimiSessionParser.normalizeModelId("KIMI-FOR-CODING"), "kimi-for-coding")
+        XCTAssertEqual(
+            KimiSessionParser.normalizeModelId("Kimi-Code/K3"),
+            KimiSessionParser.normalizeModelId("kimi-code/k3")
+        )
+    }
+
+    func testParseMergesModelsDifferingOnlyByCase() throws {
+        try writeWireFile(
+            agent: "main",
+            lines: [
+                usageRecord(model: "kimi-code/k3", inputOther: 100, output: 0, cacheRead: 0, cacheCreation: 0),
+                usageRecord(model: "Kimi-Code/K3", inputOther: 400, output: 0, cacheRead: 0, cacheCreation: 0),
+            ]
+        )
+
+        let summaries = KimiSessionParser(basePath: temporaryDirectory.path).parse().modelSummaries
+        XCTAssertEqual(summaries.count, 1)
+        XCTAssertEqual(summaries.first?.id, "kimi-k3")
+        XCTAssertEqual(summaries.first?.inputTokens, 500)
+    }
+
     func testNormalizeModelIdFallsBackWhenMissing() {
         XCTAssertEqual(KimiSessionParser.normalizeModelId(nil), "kimi-unknown")
         XCTAssertEqual(KimiSessionParser.normalizeModelId("kimi-code/"), "kimi-unknown")

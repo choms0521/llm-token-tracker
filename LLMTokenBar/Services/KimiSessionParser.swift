@@ -148,7 +148,10 @@ final class KimiSessionParser: @unchecked Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !name.isEmpty else { return fallback }
 
-        return name.lowercased().hasPrefix("kimi") ? name : "kimi-\(name)"
+        // 모델 ID는 집계 키이자 필터·차트 색상 판별에 쓰이므로, 대소문자만 다른 값이
+        // 서로 다른 모델로 갈라지지 않도록 항상 소문자로 통일한다.
+        let normalized = name.lowercased()
+        return normalized.hasPrefix("kimi") ? normalized : "kimi-\(normalized)"
     }
 
     private func findWireFiles() -> [String] {
