@@ -14,6 +14,7 @@ final class TokenStatsService: ObservableObject {
     private let claudeParser: ClaudeSessionParser
     private let geminiParser: GeminiSessionParser
     private let codexParser: CodexSessionParser
+    private let kimiParser: KimiSessionParser
     private var currentReloadTask: Task<Void, Never>?
 
     private static let cacheInterval: TimeInterval = 3600 // 1시간
@@ -32,11 +33,13 @@ final class TokenStatsService: ObservableObject {
         claudeParser: ClaudeSessionParser = ClaudeSessionParser(),
         geminiParser: GeminiSessionParser = GeminiSessionParser(),
         codexParser: CodexSessionParser = CodexSessionParser(),
+        kimiParser: KimiSessionParser = KimiSessionParser(),
         cachePath: String? = defaultCachePath
     ) {
         self.claudeParser = claudeParser
         self.geminiParser = geminiParser
         self.codexParser = codexParser
+        self.kimiParser = kimiParser
         self.cachePath = cachePath
         if cachePath != nil {
             loadCache()
@@ -59,11 +62,12 @@ final class TokenStatsService: ObservableObject {
 
         let startTime = ContinuousClock.now
 
-        currentReloadTask = Task.detached(priority: .utility) { [claudeParser, geminiParser, codexParser] in
+        currentReloadTask = Task.detached(priority: .utility) { [claudeParser, geminiParser, codexParser, kimiParser] in
             let result = await Self.parseInBackground(
                 claude: claudeParser,
                 gemini: geminiParser,
-                codex: codexParser
+                codex: codexParser,
+                kimi: kimiParser
             )
 
             let elapsed = ContinuousClock.now - startTime
@@ -124,22 +128,26 @@ final class TokenStatsService: ObservableObject {
     private static nonisolated func parseInBackground(
         claude: ClaudeSessionParser,
         gemini: GeminiSessionParser,
-        codex: CodexSessionParser
+        codex: CodexSessionParser,
+        kimi: KimiSessionParser
     ) async -> (tokens: [DailyTokenEntry], summaries: [ModelSummary], cost: Double) {
         let claudeData = claude.parse()
         let geminiData = gemini.parse()
         let codexData = codex.parse()
+        let kimiData = kimi.parse()
 
         var tokens: [DailyTokenEntry] = []
         tokens.append(contentsOf: claudeData.dailyTokens)
         tokens.append(contentsOf: geminiData.dailyTokens)
         tokens.append(contentsOf: codexData.dailyTokens)
+        tokens.append(contentsOf: kimiData.dailyTokens)
         tokens.sort { $0.date < $1.date }
 
         var summaries: [ModelSummary] = []
         summaries.append(contentsOf: claudeData.modelSummaries)
         summaries.append(contentsOf: geminiData.modelSummaries)
         summaries.append(contentsOf: codexData.modelSummaries)
+        summaries.append(contentsOf: kimiData.modelSummaries)
         summaries.sort { $0.totalTokens > $1.totalTokens }
 
         let cost = summaries.reduce(0) { $0 + $1.costUSD }
