@@ -30,6 +30,7 @@ final class TokenStatsServiceTests: XCTestCase {
             claudeParser: ClaudeSessionParser(basePath: claudeDir.path),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
             codexParser: CodexSessionParser(basePath: "/nonexistent"),
+            kimiParser: KimiSessionParser(basePath: "/nonexistent"),
             cachePath: nil
         )
         service.forceReload()
@@ -66,6 +67,7 @@ final class TokenStatsServiceTests: XCTestCase {
             claudeParser: ClaudeSessionParser(basePath: claudeDir.path),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
             codexParser: CodexSessionParser(basePath: "/nonexistent"),
+            kimiParser: KimiSessionParser(basePath: "/nonexistent"),
             cachePath: nil
         )
         service.forceReload()
@@ -91,6 +93,7 @@ final class TokenStatsServiceTests: XCTestCase {
             claudeParser: ClaudeSessionParser(basePath: "/nonexistent"),
             geminiParser: GeminiSessionParser(basePath: "/nonexistent"),
             codexParser: CodexSessionParser(basePath: "/nonexistent"),
+            kimiParser: KimiSessionParser(basePath: "/nonexistent"),
             cachePath: nil
         )
 

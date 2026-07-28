@@ -38,6 +38,10 @@ enum Constants {
     enum Kimi {
         static let usageURL = "https://api.kimi.com/coding/v1/usages"
         static let apiKeyEnvVar = "KIMI_API_KEY"
+        // Kimi Code CLI는 세션별 wire 로그에 토큰 사용량을 기록한다.
+        // ~/.kimi (구버전)는 마이그레이션 이후 사용량을 남기지 않으므로 제외한다.
+        static let sessionBasePath = "\(NSHomeDirectory())/.kimi-code/sessions"
+        static let configPath = "\(NSHomeDirectory())/.kimi-code"
     }
 
     enum Keychain {
