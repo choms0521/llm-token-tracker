@@ -176,7 +176,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         switch metric {
         case "session":
-            return limits.sessionLimit?.usedPercent
+            // While the 5-hour limit is lifted, the weekly window is the only
+            // enforced limit, so surface it instead of an empty status item
+            return limits.sessionLimit?.usedPercent ?? limits.weeklyLimit?.usedPercent
         case "weekly":
             return limits.weeklyLimit?.usedPercent
         default:

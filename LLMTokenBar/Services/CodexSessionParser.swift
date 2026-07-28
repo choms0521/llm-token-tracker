@@ -101,6 +101,12 @@ extension CodexRateLimits {
         return nil
     }
 
+    // OpenAI lifted the 5-hour limit on 2026-07-12; while lifted, the server
+    // reports only the weekly window and no session window exists to track.
+    var isSessionLimitLifted: Bool {
+        sessionLimit == nil && weeklyLimit != nil
+    }
+
     private func firstLimit(where matchesWindow: (Int) -> Bool) -> CodexRateLimit? {
         [primary, secondary].compactMap { $0 }.first { limit in
             guard let minutes = limit.windowMinutes else { return false }
