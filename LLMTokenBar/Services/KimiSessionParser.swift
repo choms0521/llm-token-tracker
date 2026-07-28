@@ -34,7 +34,8 @@ private struct KimiWireUsage: Decodable {
 // MARK: - Parser
 
 final class KimiSessionParser: @unchecked Sendable {
-    /// 턴 단위로 기록되는 사용량 스코프. 누적 스코프가 추가되더라도 중복 합산하지 않도록 이 값만 받는다.
+    /// 턴 단위로 기록되는 사용량 스코프.
+    /// 누적 스코프나 스코프 미기재 레코드가 섞여도 중복 합산되지 않도록 이 값과 정확히 일치할 때만 집계한다.
     private static let turnScope = "turn"
 
     private let basePath: String
@@ -78,7 +79,7 @@ final class KimiSessionParser: @unchecked Sendable {
             for lineData in data.split(separator: UInt8(ascii: "\n")) {
                 guard let line = try? decoder.decode(KimiWireLine.self, from: Data(lineData)),
                       line.type == "usage.record",
-                      line.usageScope == nil || line.usageScope == Self.turnScope,
+                      line.usageScope == Self.turnScope,
                       let usage = line.usage,
                       let timeMillis = line.time else {
                     continue

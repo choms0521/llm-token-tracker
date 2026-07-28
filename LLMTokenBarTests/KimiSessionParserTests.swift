@@ -96,6 +96,24 @@ final class KimiSessionParserTests: XCTestCase {
         XCTAssertEqual(summary.inputTokens, 100)
     }
 
+    /// 스코프가 없는 레코드는 턴 단위임을 보장할 수 없으므로 집계하지 않는다.
+    func testParseIgnoresRecordsWithoutUsageScope() throws {
+        try writeWireFile(
+            agent: "main",
+            lines: [
+                usageRecord(model: "kimi-code/k3", inputOther: 100, output: 0, cacheRead: 0, cacheCreation: 0),
+                #"""
+                {"type":"usage.record","model":"kimi-code/k3","usage":{"inputOther":100,"output":0,\#
+                "inputCacheRead":0,"inputCacheCreation":0},"time":1784540305000}
+                """#,
+            ]
+        )
+
+        let parser = KimiSessionParser(basePath: temporaryDirectory.path)
+        let summary = try XCTUnwrap(parser.parse().modelSummaries.first { $0.id == "kimi-k3" })
+        XCTAssertEqual(summary.inputTokens, 100)
+    }
+
     func testParseSkipsUnrelatedLinesAndZeroUsage() throws {
         try writeWireFile(
             agent: "main",
