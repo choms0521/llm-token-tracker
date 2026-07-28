@@ -143,7 +143,7 @@ struct SettingsView: View {
         case .history:
             UsageHistoryView(historyStore: historyStore)
         case .tokens:
-            TokenStatsView()
+            TokenStatsView(config: displayConfig)
         case .general:
             GeneralSettingsView()
         }

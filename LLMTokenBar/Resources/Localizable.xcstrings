@@ -223,7 +223,6 @@
       }
     },
     "All" : {
-      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -550,6 +549,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Haiku (주간)"
+          }
+        }
+      }
+    },
+    "Hide providers turned off in Display settings" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display 설정에서 꺼둔 provider 감추기"
           }
         }
       }
@@ -1211,6 +1220,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "설정"
+          }
+        }
+      }
+    },
+    "Show providers turned off in Display settings" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display 설정에서 꺼둔 provider 표시"
           }
         }
       }
