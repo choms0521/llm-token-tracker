@@ -275,6 +275,16 @@
         }
       }
     },
+    "As of %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 기준"
+          }
+        }
+      }
+    },
     "Auto-refresh credentials on profile switch" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -669,6 +679,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "CLI 및 앱 계정 동기화 유지"
+          }
+        }
+      }
+    },
+    "Limit reached" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한도 도달"
           }
         }
       }

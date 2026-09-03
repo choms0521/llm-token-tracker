@@ -22,6 +22,12 @@ enum Constants {
     enum Codex {
         static let sessionBasePath = "\(NSHomeDirectory())/.codex/sessions"
         static let configPath = "\(NSHomeDirectory())/.codex"
+        // 주간 창(7일)보다 오래된 세션 로그는 한도 표시에 쓸모가 없으므로 하루 여유를 두고 잘라낸다.
+        static let rateLimitLookbackDays = 8
+        static let rateLimitLookback: TimeInterval = TimeInterval(rateLimitLookbackDays) * 24 * 3600
+        // 변경된 파일만 다시 읽으므로 짧은 주기로 폴링해도 부담이 없다.
+        static let rateLimitPollInterval: TimeInterval = 60
+        static let fullUtilizationPercent: Double = 100
     }
 
     enum MiniMax {
