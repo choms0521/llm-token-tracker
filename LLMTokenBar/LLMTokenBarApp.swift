@@ -172,13 +172,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func codexValue(metric: String) -> Double? {
-        guard let limits = codexUsage?.latestLimits else { return nil }
+        guard let codexUsage else { return nil }
 
         switch metric {
         case "session":
-            return limits.sessionLimit?.usedPercent
+            return codexUsage.sessionUtilization
         case "weekly":
-            return limits.weeklyLimit?.usedPercent
+            return codexUsage.weeklyUtilization
         default:
             return nil
         }

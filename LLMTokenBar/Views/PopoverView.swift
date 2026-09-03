@@ -163,29 +163,52 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 6) {
                 providerHeader(name: "OpenAI Codex", icon: "cpu", color: .green)
 
-                if let session = limits.sessionLimit {
-                    let resetDate = session.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
-                    let isReset = resetDate.map { $0 < Date() } ?? false
+                if let utilization = codexUsage.sessionUtilization {
                     UsageCardView(entry: UsageEntry(
                         label: String(localized: "Session Usage (5 Hours)"),
-                        sublabel: "Codex \(limits.planType ?? "plus")",
-                        utilization: isReset ? 0 : (session.usedPercent ?? 0),
-                        resetsAt: isReset ? nil : resetDate
+                        sublabel: codexSublabel(plan: limits.planType, window: .session),
+                        utilization: utilization,
+                        resetsAt: codexUsage.sessionResetsAt
                     ))
                 }
 
-                if let weekly = limits.weeklyLimit {
-                    let resetDate = weekly.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
-                    let isReset = resetDate.map { $0 < Date() } ?? false
+                if let utilization = codexUsage.weeklyUtilization {
                     UsageCardView(entry: UsageEntry(
                         label: String(localized: "Weekly Usage (7 Days)"),
-                        sublabel: "Codex \(limits.planType ?? "plus")",
-                        utilization: isReset ? 0 : (weekly.usedPercent ?? 0),
-                        resetsAt: isReset ? nil : resetDate
+                        sublabel: codexSublabel(plan: limits.planType, window: .weekly),
+                        utilization: utilization,
+                        resetsAt: codexUsage.weeklyResetsAt
                     ))
                 }
+
+                codexFreshnessRow
             }
         }
+    }
+
+    private func codexSublabel(plan: String?, window: CodexLimitWindow) -> String {
+        codexUsage.limitReachedWindow == window
+            ? String(localized: "Limit reached")
+            : "Codex \(plan ?? "plus")"
+    }
+
+    /// 표시 중인 값의 기준 시각과 갱신 진행 여부.
+    @ViewBuilder
+    private var codexFreshnessRow: some View {
+        HStack(spacing: 6) {
+            if let snapshotAt = codexUsage.latestSnapshotAt {
+                let timeString = TimeFormatter.dataTimeString(from: snapshotAt)
+                Text(String(localized: "As of \(timeString)"))
+                    .font(.pretendard(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+
+            if codexUsage.isRefreshing {
+                ProgressView()
+                    .controlSize(.mini)
+            }
+        }
+        .padding(.horizontal, 4)
     }
 
     @ViewBuilder

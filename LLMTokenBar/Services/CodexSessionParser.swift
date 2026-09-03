@@ -34,34 +34,83 @@ private struct CodexTokenInfo: Decodable {
     }
 }
 
-private struct CodexEventMsgPayload: Decodable {
-    let type: String?
-    let info: CodexTokenInfo?
-    let rateLimits: CodexRateLimits?
+/// 한도 스캔 전용 라인 모델. token_count(rate_limits)와 task_complete(error)만 읽는다.
+private struct CodexRateLimitScanLine: Decodable {
+    let timestamp: String
+    let type: String
+    let payload: Payload
 
-    enum CodingKeys: String, CodingKey {
-        case type, info
-        case rateLimits = "rate_limits"
+    struct Payload: Decodable {
+        let type: String?
+        let rateLimits: CodexRateLimits?
+        let error: ErrorInfo?
+
+        enum CodingKeys: String, CodingKey {
+            case type, error
+            case rateLimits = "rate_limits"
+        }
+    }
+
+    /// error 필드는 객체(`{"message": ...}`)와 문자열 두 형태가 모두 관찰되므로 둘 다 받는다.
+    struct ErrorInfo: Decodable {
+        let message: String?
+
+        enum CodingKeys: String, CodingKey {
+            case message
+        }
+
+        init(from decoder: Decoder) throws {
+            if let single = try? decoder.singleValueContainer(),
+               let text = try? single.decode(String.self) {
+                message = text
+                return
+            }
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            message = try container.decodeIfPresent(String.self, forKey: .message)
+        }
     }
 }
 
-private struct CodexEventMsgLine: Decodable {
-    let type: String
-    let payload: CodexEventMsgPayload
+struct CodexCredits: Decodable, Sendable {
+    let hasCredits: Bool?
+    let unlimited: Bool?
+    let balance: String?
+
+    enum CodingKeys: String, CodingKey {
+        case hasCredits = "has_credits"
+        case unlimited, balance
+    }
 }
 
-struct CodexRateLimits: Decodable {
+struct CodexRateLimits: Decodable, Sendable {
     let primary: CodexRateLimit?
     let secondary: CodexRateLimit?
     let planType: String?
+    let credits: CodexCredits?
+    let rateLimitReachedType: String?
+
+    init(
+        primary: CodexRateLimit? = nil,
+        secondary: CodexRateLimit? = nil,
+        planType: String? = nil,
+        credits: CodexCredits? = nil,
+        rateLimitReachedType: String? = nil
+    ) {
+        self.primary = primary
+        self.secondary = secondary
+        self.planType = planType
+        self.credits = credits
+        self.rateLimitReachedType = rateLimitReachedType
+    }
 
     enum CodingKeys: String, CodingKey {
-        case primary, secondary
+        case primary, secondary, credits
         case planType = "plan_type"
+        case rateLimitReachedType = "rate_limit_reached_type"
     }
 }
 
-struct CodexRateLimit: Decodable {
+struct CodexRateLimit: Decodable, Sendable {
     let usedPercent: Double?
     let windowMinutes: Int?
     let resetsAt: Int?
@@ -125,16 +174,33 @@ private struct CodexTokenUsage: Decodable {
 
 // MARK: - Parser
 
-final class CodexSessionParser: @unchecked Sendable {
+protocol CodexRateLimitReporting: Sendable {
+    func rateLimitReport() -> CodexSessionParser.RateLimitReport
+}
+
+final class CodexSessionParser: CodexRateLimitReporting, @unchecked Sendable {
     private let basePath: String
     private let fileManager: FileManager
+    private let now: () -> Date
+
+    // 한도 스캔 결과 캐시. (수정 시각, 크기)가 같은 파일은 다시 읽지 않는다.
+    private let cacheLock = NSLock()
+    private var rateLimitCache: [String: RateLimitFileCacheEntry] = [:]
+    private var rateLimitParsedFiles = 0
 
     init(
         basePath: String = Constants.Codex.sessionBasePath,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        now: @escaping () -> Date = Date.init
     ) {
         self.basePath = basePath
         self.fileManager = fileManager
+        self.now = now
+    }
+
+    /// 지금까지 한도 스캔에서 실제로 읽은 파일 수. 캐시 동작 검증용.
+    var parsedRateLimitFileCount: Int {
+        cacheLock.withLock { rateLimitParsedFiles }
     }
 
     var isCodexCLIInstalled: Bool {
@@ -278,57 +344,183 @@ final class CodexSessionParser: @unchecked Sendable {
         return (dailyTokens, modelSummaries)
     }
 
-    func latestRateLimits() -> CodexRateLimits? {
-        allRateLimitSnapshots().last?.limits
-    }
+    // MARK: - Rate Limits
 
-    struct RateLimitSnapshot {
+    struct RateLimitSnapshot: Sendable {
         let timestamp: Date
         let limits: CodexRateLimits
     }
 
+    struct RateLimitReport: Sendable {
+        /// primary가 있는 스냅샷만, 시각 오름차순.
+        let snapshots: [RateLimitSnapshot]
+        let latest: RateLimitSnapshot?
+        /// 최신 스냅샷 이후에 한도 도달 신호가 있고 세션 창이 아직 리셋되지 않았을 때만 채워진다.
+        let limitReachedAt: Date?
+    }
+
+    func latestRateLimits() -> CodexRateLimits? {
+        rateLimitReport().latest?.limits
+    }
+
     func allRateLimitSnapshots() -> [RateLimitSnapshot] {
-        let files = findSessionFiles()
-        let decoder = JSONDecoder()
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let fallbackFormatter = ISO8601DateFormatter()
-        fallbackFormatter.formatOptions = [.withInternetDateTime]
+        rateLimitReport().snapshots
+    }
 
-        var snapshots: [RateLimitSnapshot] = []
+    func rateLimitReport() -> RateLimitReport {
+        let cutoff = now().addingTimeInterval(-Constants.Codex.rateLimitLookback)
+        let candidates = rateLimitCandidates(modifiedAfter: cutoff)
 
-        for filePath in files {
-            guard let data = try? Data(contentsOf: URL(fileURLWithPath: filePath)) else {
-                continue
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+
+        let entries = candidates.map { cachedOrParsedEntry(for: $0) }
+        rateLimitCache = Dictionary(
+            uniqueKeysWithValues: zip(candidates.map(\.path), entries)
+        )
+
+        let snapshots = entries.flatMap(\.snapshots).sorted { $0.timestamp < $1.timestamp }
+        let latest = snapshots.last
+        return RateLimitReport(
+            snapshots: snapshots,
+            latest: latest,
+            limitReachedAt: activeLimitMarker(entries.flatMap(\.limitMarkers), latest: latest)
+        )
+    }
+
+    // MARK: - Rate Limit Scanning (private)
+
+    private struct RateLimitFileCandidate {
+        let path: String
+        let modificationDate: Date
+        let fileSize: Int
+    }
+
+    private struct RateLimitFileCacheEntry {
+        let modificationDate: Date
+        let fileSize: Int
+        let snapshots: [RateLimitSnapshot]
+        let limitMarkers: [Date]
+    }
+
+    private static let rateLimitsNeedle = Data("\"rate_limits\"".utf8)
+    private static let taskCompleteNeedle = Data("\"task_complete\"".utf8)
+
+    private func rateLimitCandidates(modifiedAfter cutoff: Date) -> [RateLimitFileCandidate] {
+        findSessionFiles().compactMap { path in
+            guard let attributes = try? fileManager.attributesOfItem(atPath: path),
+                  let modificationDate = attributes[.modificationDate] as? Date,
+                  modificationDate >= cutoff else {
+                return nil
             }
+            let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
+            return RateLimitFileCandidate(path: path, modificationDate: modificationDate, fileSize: fileSize)
+        }
+    }
 
-            let lines = data.split(separator: UInt8(ascii: "\n"))
-            for lineData in lines {
-                guard let eventLine = try? decoder.decode(CodexEventMsgLine.self, from: Data(lineData)),
-                      eventLine.type == "event_msg",
-                      eventLine.payload.type == "token_count",
-                      let limits = eventLine.payload.rateLimits,
-                      limits.primary != nil else {
+    /// cacheLock을 잡은 상태에서만 호출한다.
+    private func cachedOrParsedEntry(for candidate: RateLimitFileCandidate) -> RateLimitFileCacheEntry {
+        if let cached = rateLimitCache[candidate.path],
+           cached.modificationDate == candidate.modificationDate,
+           cached.fileSize == candidate.fileSize {
+            return cached
+        }
+        rateLimitParsedFiles += 1
+        return parseRateLimitFile(candidate)
+    }
+
+    private func parseRateLimitFile(_ candidate: RateLimitFileCandidate) -> RateLimitFileCacheEntry {
+        var snapshots: [RateLimitSnapshot] = []
+        var markers: [Date] = []
+
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: candidate.path), options: .mappedIfSafe) {
+            let decoder = JSONDecoder()
+            let timestamps = TimestampParser()
+            for lineData in data.split(separator: UInt8(ascii: "\n")) {
+                guard Self.lineMayContainRateLimitEvent(lineData),
+                      let line = try? decoder.decode(CodexRateLimitScanLine.self, from: Data(lineData)),
+                      line.type == "event_msg",
+                      let timestamp = timestamps.date(from: line.timestamp) else {
                     continue
                 }
-
-                // Parse timestamp from the line
-                if let rawLine = try? decoder.decode(CodexJSONLLine.self, from: Data(lineData)) {
-                    let date: Date?
-                    if let d = isoFormatter.date(from: rawLine.timestamp) {
-                        date = d
-                    } else {
-                        date = fallbackFormatter.date(from: rawLine.timestamp)
-                    }
-
-                    if let date {
-                        snapshots.append(RateLimitSnapshot(timestamp: date, limits: limits))
-                    }
-                }
+                Self.collect(line.payload, at: timestamp, snapshots: &snapshots, markers: &markers)
             }
         }
 
-        return snapshots.sorted { $0.timestamp < $1.timestamp }
+        return RateLimitFileCacheEntry(
+            modificationDate: candidate.modificationDate,
+            fileSize: candidate.fileSize,
+            snapshots: snapshots,
+            limitMarkers: markers
+        )
+    }
+
+    /// JSON 디코드 전에 이벤트 종류 바이트 검색으로 걸러 낸다. 세션 로그 대부분은 대화 내용이라 여기서 탈락한다.
+    private static func lineMayContainRateLimitEvent(_ lineData: Data) -> Bool {
+        lineData.range(of: rateLimitsNeedle) != nil || lineData.range(of: taskCompleteNeedle) != nil
+    }
+
+    private static func collect(
+        _ payload: CodexRateLimitScanLine.Payload,
+        at timestamp: Date,
+        snapshots: inout [RateLimitSnapshot],
+        markers: inout [Date]
+    ) {
+        switch payload.type {
+        case "token_count":
+            guard let limits = payload.rateLimits else { return }
+            if limits.primary != nil {
+                snapshots.append(RateLimitSnapshot(timestamp: timestamp, limits: limits))
+            }
+            if limits.rateLimitReachedType != nil {
+                markers.append(timestamp)
+            }
+
+        case "task_complete":
+            let message = payload.error?.message ?? ""
+            if message.range(of: "usage limit", options: .caseInsensitive) != nil {
+                markers.append(timestamp)
+            }
+
+        default:
+            break
+        }
+    }
+
+    /// 최신 스냅샷보다 늦은 한도 도달 신호 중 가장 최근 것.
+    /// 신호가 어느 창을 가리키는지는 알 수 없으므로, 세션 창이 있으면 세션 창을 기준으로 삼고
+    /// 주간 창만 있는 레이아웃에서는 주간 창을 기준으로 삼아 그 창이 리셋됐으면 낡은 신호로 버린다.
+    /// (세션이 리셋된 뒤에도 주간 창을 근거로 신호를 살려 두면 주간 한도가 소진된 것처럼 보이기 때문이다.)
+    private func activeLimitMarker(_ markers: [Date], latest: RateLimitSnapshot?) -> Date? {
+        guard let latest,
+              let governing = latest.limits.sessionLimit ?? latest.limits.weeklyLimit,
+              isUnexpired(governing) else {
+            return nil
+        }
+        return markers.filter { $0 >= latest.timestamp }.max()
+    }
+
+    /// resets_at이 없으면 아직 리셋되지 않은 것으로 본다.
+    private func isUnexpired(_ limit: CodexRateLimit) -> Bool {
+        guard let resetsAt = limit.resetsAt else { return true }
+        return Date(timeIntervalSince1970: TimeInterval(resetsAt)) > now()
+    }
+
+    /// 파일 하나를 읽는 동안 재사용하는 타임스탬프 파서. 소수점 초가 있는 형식과 없는 형식을 모두 받는다.
+    private struct TimestampParser {
+        private let fractional: ISO8601DateFormatter
+        private let plain: ISO8601DateFormatter
+
+        init() {
+            fractional = ISO8601DateFormatter()
+            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            plain = ISO8601DateFormatter()
+            plain.formatOptions = [.withInternetDateTime]
+        }
+
+        func date(from raw: String) -> Date? {
+            fractional.date(from: raw) ?? plain.date(from: raw)
+        }
     }
 
     // MARK: - Private
