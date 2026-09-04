@@ -57,5 +57,34 @@ enum Constants {
         static let popoverHeight: CGFloat = 420
         static let settingsWidth: CGFloat = 700
         static let settingsHeight: CGFloat = 750
+        /// 서버 연결이 끊긴 뒤 마지막 값을 보여줄 때의 흐림 정도.
+        static let staleContentOpacity: Double = 0.55
+    }
+}
+
+extension Constants {
+    enum Antigravity {
+        /// Antigravity CLI 프로세스 이름. 언어 서버는 이 프로세스 안에서 루프백 포트로 열린다.
+        static let processName = "agy"
+        static let rpcPath = "/exa.language_server_pb.LanguageServerService/"
+        static let quotaSummaryRPC = "RetrieveUserQuotaSummary"
+        static let userStatusRPC = "GetUserStatus"
+        static let pollInterval: TimeInterval = 60
+        static let requestTimeout: TimeInterval = 3
+        /// pgrep, lsof 같은 외부 명령의 최대 실행 시간.
+        static let commandTimeout: TimeInterval = 3
+        static let commandKillGrace: TimeInterval = 0.5
+        static let commandPollInterval: TimeInterval = 0.05
+        static let maxResponseBytes = 1_048_576
+        /// 한 번의 갱신이 엔드포인트를 모두 시도하더라도 넘지 않을 전체 제한 시간.
+        static let refreshDeadline: TimeInterval = 10
+        /// 낮은 포트부터 이 개수까지만 시도한다.
+        static let maxProbedPorts = 4
+        static let errorDetailMaxLength = 120
+        /// 서버가 보낸 이름·창 문자열의 최대 길이. 화면이 깨지지 않도록 파싱 단계에서 자른다.
+        static let serverStringMaxLength = 80
+        static let pgrepPath = "/usr/bin/pgrep"
+        static let lsofPath = "/usr/sbin/lsof"
+        static let geminiBucketPrefix = "gemini-"
     }
 }

@@ -1,6 +1,19 @@
 import Foundation
 
 enum TimeFormatter {
+    /// 데이터 기준 시각 표시용. 오늘이면 시각만, 아니면 날짜와 시각을 현지 형식으로 돌려준다.
+    static func dataTimeString(from date: Date) -> String {
+        let template = Calendar.current.isDateInToday(date) ? "jm" : "Mdjm"
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateFormat = DateFormatter.dateFormat(
+            fromTemplate: template,
+            options: 0,
+            locale: Locale.current
+        ) ?? "HH:mm"
+        return formatter.string(from: date)
+    }
+
     static func resetTimeString(from date: Date?) -> String {
         guard let date else { return "" }
 

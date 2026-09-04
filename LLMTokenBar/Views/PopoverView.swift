@@ -5,6 +5,7 @@ struct PopoverView: View {
     @ObservedObject var tokenStats: TokenStatsService
     @ObservedObject var displayConfig: ProviderDisplayConfig
     @ObservedObject var codexUsage: CodexUsageStore
+    @ObservedObject var antigravity: AntigravityQuotaStore
     var onOpenSettings: () -> Void
 
     var body: some View {
@@ -34,6 +35,7 @@ struct PopoverView: View {
                 Button(action: {
                     manager.refresh()
                     codexUsage.refresh()
+                    antigravity.refresh()
                 }) {
                     if manager.isLoading {
                         ProgressView()
@@ -75,7 +77,8 @@ struct PopoverView: View {
                     modelBreakdownView
                 }
 
-                let enabledProviders = displayConfig.enabledProviders()
+                // Gemini 구역은 자체 힌트를 보여주므로 전체 미연결 판정에서 뺀다.
+                let enabledProviders = displayConfig.enabledProviders().filter { $0 != .gemini }
                 let disconnectedProviders = enabledProviders.filter { provider in
                     switch provider {
                     case .claude: return !manager.syncStatus.isConnected
@@ -106,7 +109,7 @@ struct PopoverView: View {
         case .kimi:
             kimiUsageView
         case .gemini:
-            EmptyView()
+            AntigravityQuotaSectionView(store: antigravity)
         }
     }
 
