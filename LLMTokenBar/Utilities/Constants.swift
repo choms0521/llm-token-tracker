@@ -70,13 +70,15 @@ extension Constants {
         static let quotaSummaryRPC = "RetrieveUserQuotaSummary"
         static let userStatusRPC = "GetUserStatus"
         static let pollInterval: TimeInterval = 60
+        /// agy가 없을 때의 폴링 간격. pgrep과 lsof를 매분 돌릴 이유가 없고, 팝오버를 열면 즉시 갱신한다.
+        static let idlePollInterval: TimeInterval = 300
         static let requestTimeout: TimeInterval = 3
         /// pgrep, lsof 같은 외부 명령의 최대 실행 시간.
         static let commandTimeout: TimeInterval = 3
         static let commandKillGrace: TimeInterval = 0.5
         static let commandPollInterval: TimeInterval = 0.05
         static let maxResponseBytes = 1_048_576
-        /// 한 번의 갱신이 엔드포인트를 모두 시도하더라도 넘지 않을 전체 제한 시간.
+        /// 이 시간이 지나면 새 엔드포인트 시도를 시작하지 않는다. 진행 중인 요청은 requestTimeout까지 더 걸릴 수 있다.
         static let refreshDeadline: TimeInterval = 10
         /// 낮은 포트부터 이 개수까지만 시도한다.
         static let maxProbedPorts = 4

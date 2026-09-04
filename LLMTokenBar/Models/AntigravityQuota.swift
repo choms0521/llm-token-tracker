@@ -11,11 +11,12 @@ enum AntigravityQuotaWindow: Equatable, Sendable {
     case weekly
     case other(String)
 
-    init(rawValue: String) {
-        switch rawValue.lowercased() {
+    /// 서버가 보낸 창 이름을 분류한다. 모르는 값은 그대로 보존한다.
+    init(serverValue: String) {
+        switch serverValue.lowercased() {
         case "5h": self = .fiveHour
         case "weekly": self = .weekly
-        default: self = .other(rawValue)
+        default: self = .other(serverValue)
         }
     }
 }
@@ -100,7 +101,7 @@ enum AntigravityQuotaParser {
         return AntigravityQuotaBucket(
             id: clip(raw.bucketId),
             displayName: clip(raw.displayName),
-            window: AntigravityQuotaWindow(rawValue: clip(raw.window)),
+            window: AntigravityQuotaWindow(serverValue: clip(raw.window)),
             usedPercent: used,
             resetsAt: raw.resetTime?.date
         )

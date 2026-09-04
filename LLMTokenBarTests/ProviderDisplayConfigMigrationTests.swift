@@ -42,4 +42,13 @@ final class ProviderDisplayConfigMigrationTests: XCTestCase {
         let second = ProviderDisplayConfig(defaults: defaults)
         XCTAssertFalse(second.isEnabled(.gemini))
     }
+
+    @MainActor
+    func testFreshInstallEnablesGeminiByDefaultEvenWhenMigrationAlreadyRan() {
+        defaults.set(true, forKey: ProviderDisplayConfig.antigravityMigrationKey)
+
+        let config = ProviderDisplayConfig(defaults: defaults)
+
+        XCTAssertTrue(config.isEnabled(.gemini))
+    }
 }

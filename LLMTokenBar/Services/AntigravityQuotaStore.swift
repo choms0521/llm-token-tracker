@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.llmtokenbar", category: "AntigravityQuota")
 
 enum AntigravityConnectionStatus: Equatable, Sendable {
     /// 첫 조회가 끝나기 전. 아직 실행 여부를 모른다.
@@ -16,10 +19,13 @@ final class AntigravityQuotaStore: ObservableObject {
     @Published private(set) var planName: String?
     @Published private(set) var isRefreshing = false
     @Published private(set) var status: AntigravityConnectionStatus = .checking
+    /// 현재 폴링 간격. agy가 없으면 idlePollInterval로 늘어난다.
+    private(set) var pollInterval: TimeInterval = Constants.Antigravity.pollInterval
 
     private let client: any AntigravityQuotaFetching
     private var refreshTask: Task<Void, Never>?
     private var timer: Timer?
+    private var isPolling = false
 
     init(client: any AntigravityQuotaFetching = AntigravityQuotaClient()) {
         self.client = client
@@ -60,16 +66,13 @@ final class AntigravityQuotaStore: ObservableObject {
         }
     }
 
-    func startPolling(interval: TimeInterval = Constants.Antigravity.pollInterval) {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.refresh()
-            }
-        }
+    func startPolling() {
+        isPolling = true
+        scheduleTimer()
     }
 
     func stopPolling() {
+        isPolling = false
         timer?.invalidate()
         timer = nil
         refreshTask?.cancel()
@@ -77,6 +80,15 @@ final class AntigravityQuotaStore: ObservableObject {
     }
 
     // MARK: - Private
+
+    private func scheduleTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.refresh()
+            }
+        }
+    }
 
     private func apply(_ outcome: Result<AntigravityQuotaFetchResult, Error>) {
         isRefreshing = false
@@ -88,6 +100,28 @@ final class AntigravityQuotaStore: ObservableObject {
             status = .connected
         case .failure(let error):
             status = Self.status(for: error)
+            log(error)
+        }
+        updatePollInterval()
+    }
+
+    /// agy가 없는 동안은 간격을 늘리고, 다시 나타나면 원래 간격으로 돌아온다.
+    private func updatePollInterval() {
+        let next = status == .notRunning
+            ? Constants.Antigravity.idlePollInterval
+            : Constants.Antigravity.pollInterval
+        guard next != pollInterval else { return }
+        pollInterval = next
+        if isPolling {
+            scheduleTimer()
+        }
+    }
+
+    private func log(_ error: Error) {
+        if case .serverNotRunning? = error as? AntigravityQuotaError {
+            logger.debug("agy not running, quota unavailable")
+        } else {
+            logger.error("Antigravity quota refresh failed: \(String(describing: error), privacy: .public)")
         }
     }
 

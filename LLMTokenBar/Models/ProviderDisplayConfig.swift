@@ -23,15 +23,16 @@ final class ProviderDisplayConfig: ObservableObject {
         ProviderDisplayItem(provider: .openai, isEnabled: true),
         ProviderDisplayItem(provider: .minimax, isEnabled: true),
         ProviderDisplayItem(provider: .kimi, isEnabled: true),
-        ProviderDisplayItem(provider: .gemini, isEnabled: false),
+        ProviderDisplayItem(provider: .gemini, isEnabled: true),
     ]
 
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let hadSavedItems = defaults.data(forKey: Self.storageKey) != nil
         items = Self.load(from: defaults)
-        migrateAntigravityDisplayIfNeeded()
+        migrateAntigravityDisplayIfNeeded(hadSavedItems: hadSavedItems)
     }
 
     func isEnabled(_ provider: Provider) -> Bool {
@@ -65,12 +66,13 @@ final class ProviderDisplayConfig: ObservableObject {
         }
     }
 
-    /// 기존 사용자도 Gemini 카드를 보도록 한 번만 켠다. 이후에 끄면 그대로 둔다.
-    private func migrateAntigravityDisplayIfNeeded() {
+    /// 기존 사용자도 Gemini 카드를 보도록 한 번만 켠다. 이후에 끄면 그대로 둔다. 새 설치는 기본값이 이미 켜져 있다.
+    private func migrateAntigravityDisplayIfNeeded(hadSavedItems: Bool) {
         guard !defaults.bool(forKey: Self.antigravityMigrationKey) else { return }
         defaults.set(true, forKey: Self.antigravityMigrationKey)
 
-        guard let index = items.firstIndex(where: { $0.provider == .gemini }),
+        guard hadSavedItems,
+              let index = items.firstIndex(where: { $0.provider == .gemini }),
               !items[index].isEnabled else { return }
         items[index] = ProviderDisplayItem(provider: .gemini, isEnabled: true)
         save()

@@ -182,7 +182,6 @@ final class AntigravityQuotaStoreTests: XCTestCase {
         }
     }
 
-
     func testInitialStatusIsCheckingUntilFirstFetchResolves() {
         let client = FakeAntigravityClient(result: .failure(.serverNotRunning))
         let store = AntigravityQuotaStore(client: client)
@@ -190,5 +189,20 @@ final class AntigravityQuotaStoreTests: XCTestCase {
         XCTAssertEqual(store.status, .checking)
         XCTAssertFalse(store.isConnected)
         XCTAssertFalse(store.isStale)
+    }
+
+    func testPollIntervalBacksOffWhileAgyIsNotRunning() async throws {
+        let client = FakeAntigravityClient(result: .failure(.serverNotRunning))
+        let store = AntigravityQuotaStore(client: client)
+        XCTAssertEqual(store.pollInterval, Constants.Antigravity.pollInterval)
+
+        store.refresh()
+        try await waitUntil { !store.isRefreshing }
+        XCTAssertEqual(store.pollInterval, Constants.Antigravity.idlePollInterval)
+
+        client.set(.success(sampleResult(planName: nil)))
+        store.refresh()
+        try await waitUntil { !store.isRefreshing }
+        XCTAssertEqual(store.pollInterval, Constants.Antigravity.pollInterval)
     }
 }
