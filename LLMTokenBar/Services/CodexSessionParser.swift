@@ -54,10 +54,26 @@ struct CodexRateLimits: Decodable {
     let primary: CodexRateLimit?
     let secondary: CodexRateLimit?
     let planType: String?
+    let limitId: String?
 
     enum CodingKeys: String, CodingKey {
         case primary, secondary
         case planType = "plan_type"
+        case limitId = "limit_id"
+    }
+}
+
+extension CodexRateLimits {
+    // The Codex CLI interleaves the main plan bucket (limit_id "codex") with
+    // separate model pools such as "codex_bengalfox" (Spark) that track their own,
+    // usually-idle usage. Only the main plan reflects the user's real consumption,
+    // so snapshots from other buckets must be ignored when picking what to display.
+    private static let mainPlanLimitId = "codex"
+
+    var isMainPlanBucket: Bool {
+        // Older logs carry no limit_id; treat them as the main bucket for safety.
+        guard let limitId else { return true }
+        return limitId == Self.mainPlanLimitId
     }
 }
 
@@ -308,7 +324,8 @@ final class CodexSessionParser: @unchecked Sendable {
                       eventLine.type == "event_msg",
                       eventLine.payload.type == "token_count",
                       let limits = eventLine.payload.rateLimits,
-                      limits.primary != nil else {
+                      limits.primary != nil,
+                      limits.isMainPlanBucket else {
                     continue
                 }
 
