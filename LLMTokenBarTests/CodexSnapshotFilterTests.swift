@@ -54,12 +54,14 @@ final class CodexSnapshotFilterTests: XCTestCase {
         let mainEarly = snapshotLine(
             timestamp: "2026-09-10T08:43:39.709Z",
             limitId: "codex",
+            limitName: nil,
             primaryPercent: 50.0, primaryWindow: 10080,
             secondary: nil
         )
         let sparkNewest = snapshotLine(
             timestamp: "2026-09-10T08:44:01.838Z",
             limitId: "codex_bengalfox",
+            limitName: "GPT-5.3-Codex-Spark",
             primaryPercent: 0.0, primaryWindow: 300,
             secondary: (percent: 0.0, window: 10080)
         )
@@ -69,6 +71,7 @@ final class CodexSnapshotFilterTests: XCTestCase {
     private func snapshotLine(
         timestamp: String,
         limitId: String,
+        limitName: String?,
         primaryPercent: Double,
         primaryWindow: Int,
         secondary: (percent: Double, window: Int)?
@@ -79,8 +82,9 @@ final class CodexSnapshotFilterTests: XCTestCase {
         } else {
             secondaryJSON = "null"
         }
+        let limitNameJSON = limitName.map { #""\#($0)""# } ?? "null"
         return #"""
-        {"timestamp":"\#(timestamp)","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"\#(limitId)","primary":{"used_percent":\#(primaryPercent),"window_minutes":\#(primaryWindow),"resets_at":1789047831},"secondary":\#(secondaryJSON),"plan_type":"pro"}}}
+        {"timestamp":"\#(timestamp)","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"\#(limitId)","limit_name":\#(limitNameJSON),"primary":{"used_percent":\#(primaryPercent),"window_minutes":\#(primaryWindow),"resets_at":1789047831},"secondary":\#(secondaryJSON),"plan_type":"pro"}}}
         """#
     }
 }

@@ -111,8 +111,7 @@ final class UsageHistoryStoreTests: XCTestCase {
         let weeklyOnlyLimits = CodexRateLimits(
             primary: CodexRateLimit(usedPercent: 16.0, windowMinutes: 10080, resetsAt: nil),
             secondary: nil,
-            planType: "plus",
-            limitId: "codex"
+            planType: "plus"
         )
         store.recordCodexSnapshots([
             CodexSessionParser.RateLimitSnapshot(
