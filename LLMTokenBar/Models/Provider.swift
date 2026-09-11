@@ -45,6 +45,7 @@ enum StatusBarUsageProvider: String, CaseIterable, Identifiable, Sendable {
     case openai
     case minimax
     case kimi
+    case gemini
 
     static let storageKey = "statusBarProvider"
     static let defaultValue = StatusBarUsageProvider.claude
@@ -57,6 +58,7 @@ enum StatusBarUsageProvider: String, CaseIterable, Identifiable, Sendable {
         case .openai: return .openai
         case .minimax: return .minimax
         case .kimi: return .kimi
+        case .gemini: return .gemini
         }
     }
 
@@ -73,7 +75,7 @@ enum StatusBarUsageProvider: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .claude:
             return StatusBarMetric.allCases
-        case .openai, .minimax, .kimi:
+        case .openai, .minimax, .kimi, .gemini:
             return [.session, .weekly]
         }
     }

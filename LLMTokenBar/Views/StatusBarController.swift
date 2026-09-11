@@ -10,6 +10,7 @@ final class StatusBarController: NSObject {
     private let tokenStats: TokenStatsService
     private let displayConfig: ProviderDisplayConfig
     private let codexUsage: CodexUsageStore
+    private let antigravity: AntigravityQuotaStore
     private var settingsWindow: NSWindow?
     private var eventMonitor: Any?
     private var iconObserver: NSObjectProtocol?
@@ -20,13 +21,15 @@ final class StatusBarController: NSObject {
         historyStore: UsageHistoryStore,
         tokenStats: TokenStatsService,
         displayConfig: ProviderDisplayConfig,
-        codexUsage: CodexUsageStore
+        codexUsage: CodexUsageStore,
+        antigravity: AntigravityQuotaStore
     ) {
         self.manager = manager
         self.historyStore = historyStore
         self.tokenStats = tokenStats
         self.displayConfig = displayConfig
         self.codexUsage = codexUsage
+        self.antigravity = antigravity
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.popover = NSPopover()
         super.init()
@@ -37,7 +40,7 @@ final class StatusBarController: NSObject {
     }
 
     private func setupPopover() {
-        let popoverView = PopoverView(manager: manager, tokenStats: tokenStats, displayConfig: displayConfig, codexUsage: codexUsage, onOpenSettings: { [weak self] in
+        let popoverView = PopoverView(manager: manager, tokenStats: tokenStats, displayConfig: displayConfig, codexUsage: codexUsage, antigravity: antigravity, onOpenSettings: { [weak self] in
             self?.openSettings()
         })
 
@@ -112,6 +115,7 @@ final class StatusBarController: NSObject {
             guard let button = statusItem.button else { return }
             NSApp.activate(ignoringOtherApps: true)
             codexUsage.refresh()
+            antigravity.refresh()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             if let popoverWindow = popover.contentViewController?.view.window {
                 popoverWindow.level = .floating
@@ -156,7 +160,7 @@ final class StatusBarController: NSObject {
             return
         }
 
-        let settingsView = SettingsView(manager: manager, historyStore: historyStore, displayConfig: displayConfig)
+        let settingsView = SettingsView(manager: manager, historyStore: historyStore, displayConfig: displayConfig, antigravity: antigravity)
         let hostingController = NSHostingController(rootView: settingsView)
 
         let window = NSWindow(contentViewController: hostingController)

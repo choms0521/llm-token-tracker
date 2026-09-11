@@ -88,25 +88,41 @@ struct CodexRateLimits: Decodable, Sendable {
     let planType: String?
     let credits: CodexCredits?
     let rateLimitReachedType: String?
+    let limitName: String?
 
     init(
         primary: CodexRateLimit? = nil,
         secondary: CodexRateLimit? = nil,
         planType: String? = nil,
         credits: CodexCredits? = nil,
-        rateLimitReachedType: String? = nil
+        rateLimitReachedType: String? = nil,
+        limitName: String? = nil
     ) {
         self.primary = primary
         self.secondary = secondary
         self.planType = planType
         self.credits = credits
         self.rateLimitReachedType = rateLimitReachedType
+        self.limitName = limitName
     }
 
     enum CodingKeys: String, CodingKey {
         case primary, secondary, credits
         case planType = "plan_type"
         case rateLimitReachedType = "rate_limit_reached_type"
+        case limitName = "limit_name"
+    }
+}
+
+extension CodexRateLimits {
+    // The Codex CLI interleaves the main plan bucket with separate model pools such
+    // as "codex_bengalfox" (Spark) that track their own, usually-idle usage. Only the
+    // main plan reflects the user's real consumption. Auxiliary pools are marked by a
+    // model-specific limit_name (e.g. "GPT-5.3-Codex-Spark"), while the main plan tier
+    // (limit_id "codex" or "premium") carries no limit_name, so a non-nil name marks a
+    // bucket that must not drive the displayed usage.
+    var isMainPlanBucket: Bool {
+        limitName == nil
     }
 }
 
@@ -469,6 +485,10 @@ final class CodexSessionParser: CodexRateLimitReporting, @unchecked Sendable {
         switch payload.type {
         case "token_count":
             guard let limits = payload.rateLimits else { return }
+            // Only the main plan bucket (limit_id "codex") reflects real usage; separate
+            // model pools such as "codex_bengalfox" (Spark) report their own idle limits
+            // and must not drive the displayed usage or the limit-reached marker.
+            guard limits.isMainPlanBucket else { return }
             if limits.primary != nil {
                 snapshots.append(RateLimitSnapshot(timestamp: timestamp, limits: limits))
             }

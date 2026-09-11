@@ -14,18 +14,25 @@ struct ProviderDisplayItem: Identifiable, Codable, Equatable {
 final class ProviderDisplayConfig: ObservableObject {
     @Published var items: [ProviderDisplayItem] = []
 
-    private static let storageKey = "providerDisplayOrder"
+    static let storageKey = "providerDisplayOrder"
+    /// Antigravity 한도 카드가 추가되면서 Gemini 항목을 한 번만 자동으로 켜기 위한 표식.
+    static let antigravityMigrationKey = "antigravityQuotaDisplayMigrated"
 
     private static let defaultItems: [ProviderDisplayItem] = [
         ProviderDisplayItem(provider: .claude, isEnabled: true),
         ProviderDisplayItem(provider: .openai, isEnabled: true),
         ProviderDisplayItem(provider: .minimax, isEnabled: true),
         ProviderDisplayItem(provider: .kimi, isEnabled: true),
-        ProviderDisplayItem(provider: .gemini, isEnabled: false),
+        ProviderDisplayItem(provider: .gemini, isEnabled: true),
     ]
 
-    init() {
-        items = Self.load()
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        let hadSavedItems = defaults.data(forKey: Self.storageKey) != nil
+        items = Self.load(from: defaults)
+        migrateAntigravityDisplayIfNeeded(hadSavedItems: hadSavedItems)
     }
 
     func isEnabled(_ provider: Provider) -> Bool {
@@ -53,14 +60,26 @@ final class ProviderDisplayConfig: ObservableObject {
     func save() {
         do {
             let data = try JSONEncoder().encode(items)
-            UserDefaults.standard.set(data, forKey: Self.storageKey)
+            defaults.set(data, forKey: Self.storageKey)
         } catch {
             logger.error("Provider 설정 저장 실패: \(error.localizedDescription)")
         }
     }
 
-    private static func load() -> [ProviderDisplayItem] {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
+    /// 기존 사용자도 Gemini 카드를 보도록 한 번만 켠다. 이후에 끄면 그대로 둔다. 새 설치는 기본값이 이미 켜져 있다.
+    private func migrateAntigravityDisplayIfNeeded(hadSavedItems: Bool) {
+        guard !defaults.bool(forKey: Self.antigravityMigrationKey) else { return }
+        defaults.set(true, forKey: Self.antigravityMigrationKey)
+
+        guard hadSavedItems,
+              let index = items.firstIndex(where: { $0.provider == .gemini }),
+              !items[index].isEnabled else { return }
+        items[index] = ProviderDisplayItem(provider: .gemini, isEnabled: true)
+        save()
+    }
+
+    private static func load(from defaults: UserDefaults) -> [ProviderDisplayItem] {
+        guard let data = defaults.data(forKey: storageKey),
               let saved = try? JSONDecoder().decode([ProviderDisplayItem].self, from: data) else {
             return defaultItems
         }

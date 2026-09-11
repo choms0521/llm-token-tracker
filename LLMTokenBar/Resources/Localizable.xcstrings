@@ -1,6 +1,156 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Refresh failed: %1$@ — showing values from %2$@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "갱신 실패: %1$@ — %2$@ 값 표시 중"
+          }
+        }
+      }
+    },
+    "Could not reach the agy language server" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agy 언어 서버에 연결할 수 없습니다"
+          }
+        }
+      }
+    },
+    "agy returned an unexpected response" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agy가 예상치 못한 응답을 보냈습니다"
+          }
+        }
+      }
+    },
+    "No quota data" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한도 데이터 없음"
+          }
+        }
+      }
+    },
+    "agy not running — showing values from %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agy 미실행 — %@ 값 표시 중"
+          }
+        }
+      }
+    },
+    "As of %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 기준"
+          }
+        }
+      }
+    },
+    "Antigravity CLI (agy) is not running" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity CLI(agy)가 실행 중이 아닙니다"
+          }
+        }
+      }
+    },
+    "Antigravity CLI (agy) is running" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity CLI(agy)가 실행 중입니다"
+          }
+        }
+      }
+    },
+    "Checking Antigravity CLI (agy)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity CLI(agy) 확인 중"
+          }
+        }
+      }
+    },
+    "Start agy to see quota" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agy를 실행하면 한도가 표시됩니다"
+          }
+        }
+      }
+    },
+    "5 Hours" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5시간"
+          }
+        }
+      }
+    },
+    "Antigravity Quota" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 한도"
+          }
+        }
+      }
+    },
+    "Plan" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "플랜"
+          }
+        }
+      }
+    },
+    "Quota is read from the local agy language server. No login required." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한도는 로컬 agy 언어 서버에서 읽어 오며 로그인이 필요 없습니다."
+          }
+        }
+      }
+    },
+    "Antigravity quota is queried from the local agy language server" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antigravity 한도는 로컬 agy 언어 서버에서 조회합니다"
+          }
+        }
+      }
+    },
     "(%@%%)" : {
 
     },

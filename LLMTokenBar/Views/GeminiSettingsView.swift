@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GeminiSettingsView: View {
     private let parser = GeminiSessionParser()
+    @ObservedObject var antigravity: AntigravityQuotaStore
 
     var body: some View {
         ScrollView {
@@ -13,6 +14,7 @@ struct GeminiSettingsView: View {
                     .foregroundStyle(.secondary)
                     .font(.pretendard(size: 12))
 
+                antigravityQuotaInfo
                 cliStatusBanner
                 sessionInfoView
                 dataSourceInfo
@@ -20,6 +22,63 @@ struct GeminiSettingsView: View {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onAppear { antigravity.refresh() }
+    }
+
+    private var antigravityStatusText: String {
+        switch antigravity.status {
+        case .checking: return String(localized: "Checking Antigravity CLI (agy)")
+        case .connected: return String(localized: "Antigravity CLI (agy) is running")
+        case .notRunning: return String(localized: "Antigravity CLI (agy) is not running")
+        case .error(let error): return AntigravityQuotaPresentation.title(for: error)
+        }
+    }
+
+    private var antigravityStatusColor: Color {
+        switch antigravity.status {
+        case .checking: return .gray
+        case .connected: return .green
+        case .notRunning: return .red
+        case .error: return .orange
+        }
+    }
+
+    private var antigravityQuotaInfo: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(antigravityStatusColor)
+                    .frame(width: 8, height: 8)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Antigravity Quota")
+                        .font(.pretendard(size: 13, weight: .medium))
+                    Text(antigravityStatusText)
+                        .font(.pretendard(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let planName = antigravity.planName {
+                DetailRow(icon: "person.crop.circle", label: String(localized: "Plan"), value: planName)
+            }
+
+            if let fetchedAt = antigravity.lastFetchedAt {
+                DetailRow(
+                    icon: "clock",
+                    label: String(localized: "Last Sync"),
+                    value: TimeFormatter.dataTimeString(from: fetchedAt)
+                )
+            }
+
+            Text("Quota is read from the local agy language server. No login required.")
+                .font(.pretendard(size: 11))
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var cliStatusBanner: some View {
@@ -94,7 +153,7 @@ struct GeminiSettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 BulletText("Parses session logs stored locally by Gemini CLI")
                 BulletText("View with Gemini filter in Token Stats tab")
-                BulletText("Real-time rate limit queries are not supported")
+                BulletText("Antigravity quota is queried from the local agy language server")
             }
             .padding(.leading, 4)
         }
