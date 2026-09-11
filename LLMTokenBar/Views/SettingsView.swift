@@ -47,6 +47,7 @@ struct SettingsView: View {
     @ObservedObject var manager: UsagePollingManager
     @ObservedObject var historyStore: UsageHistoryStore
     @ObservedObject var displayConfig: ProviderDisplayConfig
+    @ObservedObject var antigravity: AntigravityQuotaStore
     @State private var selectedTab: SettingsTab = .claude
 
     var body: some View {
@@ -123,7 +124,7 @@ struct SettingsView: View {
                 onSyncFromCLI: { await manager.syncFromCLI() }
             )
         case .gemini:
-            GeminiSettingsView()
+            GeminiSettingsView(antigravity: antigravity)
         case .openai:
             OpenAISettingsView()
         case .minimax:
@@ -143,7 +144,7 @@ struct SettingsView: View {
         case .history:
             UsageHistoryView(historyStore: historyStore)
         case .tokens:
-            TokenStatsView()
+            TokenStatsView(config: displayConfig)
         case .general:
             GeneralSettingsView()
         }

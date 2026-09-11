@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tokenStats: TokenStatsService?
     private var displayConfig: ProviderDisplayConfig?
     private var codexUsage: CodexUsageStore?
+    private var antigravity: AntigravityQuotaStore?
     private var cancellables = Set<AnyCancellable>()
     private var displaySettingsObserver: NSObjectProtocol?
 
@@ -32,19 +33,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let providerConfig = ProviderDisplayConfig()
         let codexUsage = CodexUsageStore()
         codexUsage.configure(historyStore: history)
+        let antigravity = AntigravityQuotaStore()
         stats.reload()
         self.manager = pollingManager
         self.historyStore = history
         self.tokenStats = stats
         self.displayConfig = providerConfig
         self.codexUsage = codexUsage
+        self.antigravity = antigravity
 
         statusBarController = StatusBarController(
             manager: pollingManager,
             historyStore: history,
             tokenStats: stats,
             displayConfig: providerConfig,
-            codexUsage: codexUsage
+            codexUsage: codexUsage,
+            antigravity: antigravity
         )
 
         pollingManager.$claudeUsage
@@ -60,6 +64,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
 
         codexUsage.$latestLimits
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateStatusBar()
+            }
+            .store(in: &cancellables)
+
+        antigravity.$summary
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateStatusBar()
@@ -102,12 +113,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         codexUsage.loadHistory()
         codexUsage.startPolling()
+        antigravity.refresh()
+        antigravity.startPolling()
         updateStatusBar()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         manager?.stopPolling()
         codexUsage?.stopPolling()
+        antigravity?.stopPolling()
         if let displaySettingsObserver {
             NotificationCenter.default.removeObserver(displaySettingsObserver)
         }
@@ -149,6 +163,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return usageValue(from: manager?.minimaxUsage, metric: metric)
         case .kimi:
             return usageValue(from: manager?.kimiUsage, metric: metric)
+        case .gemini:
+            return geminiValue(metric: metric)
         }
     }
 
@@ -171,16 +187,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func geminiValue(metric: String) -> Double? {
+        guard let antigravity, let group = antigravity.geminiGroup else { return nil }
+
+        switch metric {
+        case "session":
+            return antigravity.sessionBucket(in: group)?.usedPercent
+        case "weekly":
+            return antigravity.weeklyBucket(in: group)?.usedPercent
+        default:
+            return nil
+        }
+    }
+
     private func codexValue(metric: String) -> Double? {
-        guard let limits = codexUsage?.latestLimits else { return nil }
+        guard let codexUsage else { return nil }
 
         switch metric {
         case "session":
             // While the 5-hour limit is lifted, the weekly window is the only
-            // enforced limit, so surface it instead of an empty status item
-            return limits.sessionLimit?.usedPercent ?? limits.weeklyLimit?.usedPercent
+            // enforced limit, so surface it instead of an empty status item.
+            return codexUsage.sessionUtilization ?? codexUsage.weeklyUtilization
         case "weekly":
-            return limits.weeklyLimit?.usedPercent
+            return codexUsage.weeklyUtilization
         default:
             return nil
         }

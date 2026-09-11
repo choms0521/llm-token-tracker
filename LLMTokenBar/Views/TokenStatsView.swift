@@ -15,26 +15,57 @@ enum ChartTimeRange: String, CaseIterable, Identifiable {
     }
 }
 
+/// 토큰 통계 상단의 필터 칩. "전체"를 제외한 나머지는 Display 설정의 순서와 표시 여부를 그대로 따른다.
+struct ProviderFilter: Identifiable, Equatable {
+    static let allID = "all"
+
+    /// nil이면 "전체" 필터.
+    let provider: Provider?
+    /// Display 설정에서 꺼져 있어 평소에는 감춰 두는 provider.
+    let isHidden: Bool
+
+    var id: String { provider?.rawValue ?? Self.allID }
+
+    /// Display 설정의 순서를 그대로 따르되, 꺼진 provider는 시크릿을 해제했을 때만 노출한다.
+    /// 노출될 때도 원래 자리에 그대로 끼어들어 두 화면의 순서가 어긋나지 않는다.
+    static func makeFilters(
+        items: [ProviderDisplayItem],
+        showsHiddenProviders: Bool
+    ) -> [ProviderFilter] {
+        let ordered = items.map {
+            ProviderFilter(provider: $0.provider, isHidden: !$0.isEnabled)
+        }
+        return [ProviderFilter(provider: nil, isHidden: false)]
+            + ordered.filter { showsHiddenProviders || !$0.isHidden }
+    }
+}
+
 struct TokenStatsView: View {
+    @ObservedObject var config: ProviderDisplayConfig
     @StateObject private var service = TokenStatsService()
     @State private var selectedMonth: DateComponents = {
         let cal = Calendar.current
         return cal.dateComponents([.year, .month], from: Date())
     }()
-    @State private var selectedProvider: String = "all"
+    @State private var selectedProvider: String = ProviderFilter.allID
     @State private var chartTimeRange: ChartTimeRange = .daily
+    @State private var showsHiddenProviders = false
     @AppStorage("includeCacheTokens") private var includeCacheTokens = true
 
-    private static let providerFilters: [(id: String, label: LocalizedStringKey)] = [
-        ("all", "All"),
-        ("claude", "Claude"),
-        ("gemini", "Gemini"),
-        ("openai", "OpenAI"),
-        ("minimax", "MiniMax"),
-    ]
+    private var providerFilters: [ProviderFilter] {
+        ProviderFilter.makeFilters(
+            items: config.items,
+            showsHiddenProviders: showsHiddenProviders
+        )
+    }
+
+    private var hasHiddenProviders: Bool {
+        config.items.contains { !$0.isEnabled }
+    }
 
     private func matchesProvider(_ modelId: String) -> Bool {
-        guard selectedProvider != "all" else { return true }
+        // "전체"는 Display 설정에서 꺼둔 provider의 토큰까지 항상 포함한다.
+        guard selectedProvider != ProviderFilter.allID else { return true }
         let provider = selectedProvider
         let id = modelId.lowercased()
         if provider == "openai" {
@@ -136,6 +167,11 @@ struct TokenStatsView: View {
             }
         }
         .onAppear { service.reload() }
+        .onChange(of: config.items) { _, _ in
+            if !showsHiddenProviders {
+                resetSelectionIfProviderHidden()
+            }
+        }
     }
 
     // MARK: - Loading Overlay
@@ -259,24 +295,98 @@ struct TokenStatsView: View {
 
     // MARK: - Provider Selector
 
+    /// 칩은 고유 너비를 유지하고, provider가 늘어나면 균등 분할 대신 가로 스크롤로 처리한다.
+    /// 균등 분할이면 칩이 추가·제거될 때마다 나머지 칩 너비가 함께 변해 화면이 흔들린다.
     private var providerSelector: some View {
-        HStack(spacing: 0) {
-            ForEach(Self.providerFilters, id: \.id) { filter in
-                Button(action: { selectedProvider = filter.id }) {
-                    Text(filter.label)
-                        .font(.pretendard(size: 12, weight: selectedProvider == filter.id ? .semibold : .regular))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                        .background(selectedProvider == filter.id ? Color.accentColor.opacity(0.15) : .clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 2) {
+                ForEach(providerFilters) { filter in
+                    Button(action: { selectedProvider = filter.id }) {
+                        providerFilterLabel(filter)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+
+                if hasHiddenProviders {
+                    Button(action: toggleHiddenProviders) {
+                        Image(systemName: "ellipsis")
+                            .font(.pretendard(size: 12))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                            .background(chipBackground(isSelected: showsHiddenProviders))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    // 이미지 전용 버튼이라 VoiceOver가 읽을 라벨을 별도로 지정한다.
+                    // .help는 도움말일 뿐 접근성 라벨을 대체하지 않는다.
+                    .accessibilityLabel(hiddenProvidersToggleLabel)
+                    .help(hiddenProvidersToggleLabel)
+                }
             }
+            .padding(3)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .background(.quaternary.opacity(0.3))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .animation(.easeInOut(duration: 0.18), value: showsHiddenProviders)
+    }
+
+    private func providerFilterLabel(_ filter: ProviderFilter) -> some View {
+        let isSelected = selectedProvider == filter.id
+        return ZStack {
+            // 선택 시 글꼴이 굵어져도 칩 너비가 변하지 않도록 가장 굵은 상태로 자리를 잡아 둔다.
+            filterText(filter)
+                .font(.pretendard(size: 12, weight: .semibold))
+                .hidden()
+
+            filterText(filter)
+                .font(.pretendard(size: 12, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(filter.isHidden ? .secondary : .primary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .background(chipBackground(isSelected: isSelected))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    @ViewBuilder
+    private func filterText(_ filter: ProviderFilter) -> some View {
+        if let provider = filter.provider {
+            Text(provider.displayName)
+        } else {
+            Text("All")
+        }
+    }
+
+    private func chipBackground(isSelected: Bool) -> Color {
+        isSelected ? Color.accentColor.opacity(0.15) : .clear
+    }
+
+    /// 접근성 라벨과 도움말이 같은 문구를 쓰도록 한곳에서 관리한다.
+    /// 반환 타입을 명시해 두 리터럴이 모두 `LocalizedStringKey`로 해소되도록 보장한다.
+    private var hiddenProvidersToggleLabel: LocalizedStringKey {
+        showsHiddenProviders
+            ? "Hide providers turned off in Display settings"
+            : "Show providers turned off in Display settings"
+    }
+
+    private func toggleHiddenProviders() {
+        showsHiddenProviders.toggle()
+        if !showsHiddenProviders {
+            resetSelectionIfProviderHidden()
+        }
+    }
+
+    /// 감춰진 provider가 선택된 채로 칩이 사라져 필터 상태를 되돌릴 수 없게 되는 것을 막는다.
+    private func resetSelectionIfProviderHidden() {
+        guard let provider = Provider(rawValue: selectedProvider),
+              !config.isEnabled(provider) else {
+            return
+        }
+        selectedProvider = ProviderFilter.allID
     }
 
     // MARK: - Chart
@@ -474,6 +584,7 @@ struct TokenStatsView: View {
         if id.contains("gpt") { return .green }
         if id.hasPrefix("o1") || id.hasPrefix("o3") || id.hasPrefix("o4") { return .mint }
         if id.contains("minimax") || id.contains("hailuo") { return .purple }
+        if id.contains("kimi") { return .indigo }
         return .gray
     }
 
