@@ -173,6 +173,8 @@ struct PopoverView: View {
                         utilization: utilization,
                         resetsAt: codexUsage.sessionResetsAt
                     ))
+                } else if limits.isSessionLimitLifted {
+                    liftedSessionLimitCard(planType: limits.planType)
                 }
 
                 if let utilization = codexUsage.weeklyUtilization {
@@ -187,6 +189,35 @@ struct PopoverView: View {
                 codexFreshnessRow
             }
         }
+    }
+
+    private func liftedSessionLimitCard(planType: String?) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Session Usage (5 Hours)"))
+                        .font(.pretendard(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("Codex \(planType ?? "plus")")
+                        .font(.pretendard(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text(String(localized: "No Limit"))
+                    .font(.pretendard(size: 13, weight: .bold))
+                    .foregroundStyle(.green)
+            }
+
+            Text(String(localized: "OpenAI temporarily lifted the 5-hour limit"))
+                .font(.pretendard(size: 11))
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func codexSublabel(plan: String?, window: CodexLimitWindow) -> String {

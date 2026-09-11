@@ -54,6 +54,31 @@ final class CodexRateLimitsTests: XCTestCase {
         XCTAssertEqual(limits.weeklyLimit?.usedPercent, 7.0)
     }
 
+    func testSessionLimitLiftedOnlyWhenWeeklyWindowExistsWithoutSessionWindow() throws {
+        let weeklyOnly = try decodeLimits("""
+        {"primary": {"used_percent": 17.0, "window_minutes": 10080}, "secondary": null}
+        """)
+        XCTAssertTrue(weeklyOnly.isSessionLimitLifted)
+
+        let bothWindows = try decodeLimits("""
+        {
+            "primary": {"used_percent": 42.0, "window_minutes": 300},
+            "secondary": {"used_percent": 12.0, "window_minutes": 10080}
+        }
+        """)
+        XCTAssertFalse(bothWindows.isSessionLimitLifted)
+
+        let sessionOnly = try decodeLimits("""
+        {"primary": {"used_percent": 42.0, "window_minutes": 300}, "secondary": null}
+        """)
+        XCTAssertFalse(sessionOnly.isSessionLimitLifted)
+
+        let empty = try decodeLimits("""
+        {"primary": null, "secondary": null}
+        """)
+        XCTAssertFalse(empty.isSessionLimitLifted)
+    }
+
     private func decodeLimits(_ json: String) throws -> CodexRateLimits {
         try JSONDecoder().decode(CodexRateLimits.self, from: Data(json.utf8))
     }
