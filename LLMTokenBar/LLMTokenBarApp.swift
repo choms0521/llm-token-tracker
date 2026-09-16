@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let history = UsageHistoryStore()
         let stats = TokenStatsService()
         let providerConfig = ProviderDisplayConfig()
-        let codexUsage = CodexUsageStore()
+        let codexUsage = CodexUsageStore(service: CodexUsageService())
         codexUsage.configure(historyStore: history)
         let antigravity = AntigravityQuotaStore()
         stats.reload()
@@ -112,7 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pollingManager.startPolling()
 
         codexUsage.loadHistory()
-        codexUsage.startPolling()
+        codexUsage.startPolling(interval: Constants.Codex.liveUsagePollInterval)
         antigravity.refresh()
         antigravity.startPolling()
         updateStatusBar()
