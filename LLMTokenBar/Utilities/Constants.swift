@@ -22,11 +22,17 @@ enum Constants {
     enum Codex {
         static let sessionBasePath = "\(NSHomeDirectory())/.codex/sessions"
         static let configPath = "\(NSHomeDirectory())/.codex"
+        // Codex CLI OAuth 자격 증명. 앱은 읽기만 하고 갱신하지 않는다(CLI 세션 보호).
+        static let authPath = "\(NSHomeDirectory())/.codex/auth.json"
+        // 진행 중인 세션 없이도 최신 사용량을 주는 전용 엔드포인트. 모델 요청이 아니라 quota를 소모하지 않는다.
+        static let liveUsageURL = "https://chatgpt.com/backend-api/wham/usage"
         // 주간 창(7일)보다 오래된 세션 로그는 한도 표시에 쓸모가 없으므로 하루 여유를 두고 잘라낸다.
         static let rateLimitLookbackDays = 8
         static let rateLimitLookback: TimeInterval = TimeInterval(rateLimitLookbackDays) * 24 * 3600
         // 변경된 파일만 다시 읽으므로 짧은 주기로 폴링해도 부담이 없다.
         static let rateLimitPollInterval: TimeInterval = 60
+        // 실시간 API는 네트워크 호출이므로 다른 네트워크 공급자와 같은 완만한 주기로 폴링한다.
+        static let liveUsagePollInterval: TimeInterval = 600
         static let fullUtilizationPercent: Double = 100
     }
 

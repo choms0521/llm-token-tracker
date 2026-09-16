@@ -28,6 +28,30 @@ private final class FakeRateLimitReporter: CodexRateLimitReporting, @unchecked S
     }
 }
 
+/// 성공 리포트나 지정한 오류를 돌려주는 가짜 실시간 리포터. 결과는 폴링 도중 바꿀 수 있다.
+private final class FakeLiveReporter: CodexLiveUsageReporting, @unchecked Sendable {
+    private let lock = NSLock()
+    private var result: Result<CodexSessionParser.RateLimitReport, Error>
+    private var count = 0
+
+    init(_ result: Result<CodexSessionParser.RateLimitReport, Error>) {
+        self.result = result
+    }
+
+    var callCount: Int { lock.withLock { count } }
+
+    func setResult(_ result: Result<CodexSessionParser.RateLimitReport, Error>) {
+        lock.withLock { self.result = result }
+    }
+
+    func fetchReport() async throws -> CodexSessionParser.RateLimitReport {
+        try lock.withLock {
+            count += 1
+            return try result.get()
+        }
+    }
+}
+
 final class CodexUsageStoreTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_788_416_400)          // 2026-09-03T06:20:00Z
     private let snapshotDate = Date(timeIntervalSince1970: 1_788_415_674)
@@ -146,6 +170,164 @@ final class CodexUsageStoreTests: XCTestCase {
         XCTAssertEqual(store.latestLimits?.sessionLimit?.usedPercent, 100)
         XCTAssertEqual(store.latestSnapshotAt, snapshotDate)
         XCTAssertNotNil(store.limitReachedAt)
+    }
+
+    // MARK: - Live API vs log fallback
+
+    @MainActor
+    func testLiveSuccessUsesLiveValuesAndMarksSourceLive() async throws {
+        let liveLimits = CodexRateLimits(
+            primary: CodexRateLimit(usedPercent: 5, windowMinutes: 10080, resetsAt: weeklyReset),
+            secondary: nil,
+            planType: "pro"
+        )
+        let liveReport = report(limits: liveLimits, limitReachedAt: nil)
+        // 파서(로그)는 다른 값을 주도록 해, 실제로 실시간 값이 쓰였는지 구분한다.
+        let parser = FakeRateLimitReporter(report: sessionReport(used: 100, resetsAt: futureReset))
+        let store = CodexUsageStore(
+            parser: parser,
+            service: FakeLiveReporter(.success(liveReport)),
+            now: { [now] in now }
+        )
+
+        store.refresh()
+        try await waitUntilIdle(store)
+
+        XCTAssertEqual(store.lastSource, .live)
+        XCTAssertEqual(store.weeklyUtilization, 5)
+        XCTAssertNil(store.sessionUtilization)
+        XCTAssertEqual(parser.callCount, 0, "실시간이 성공하면 파서를 부르지 않는다")
+    }
+
+    @MainActor
+    func testLiveUnauthorizedFallsBackToLog() async throws {
+        let parser = FakeRateLimitReporter(report: sessionReport(used: 93, resetsAt: futureReset))
+        let store = CodexUsageStore(
+            parser: parser,
+            service: FakeLiveReporter(.failure(CodexUsageError.unauthorized)),
+            now: { [now] in now }
+        )
+
+        store.refresh()
+        try await waitUntilIdle(store)
+
+        XCTAssertEqual(store.lastSource, .log)
+        XCTAssertEqual(store.sessionUtilization, 93)
+        XCTAssertEqual(parser.callCount, 1)
+    }
+
+    @MainActor
+    func testLiveGenericFailureFallsBackToLog() async throws {
+        struct Boom: Error {}
+        let parser = FakeRateLimitReporter(report: sessionReport(used: 77, resetsAt: futureReset))
+        let store = CodexUsageStore(
+            parser: parser,
+            service: FakeLiveReporter(.failure(Boom())),
+            now: { [now] in now }
+        )
+
+        store.refresh()
+        try await waitUntilIdle(store)
+
+        XCTAssertEqual(store.lastSource, .log)
+        XCTAssertEqual(store.sessionUtilization, 77)
+    }
+
+    @MainActor
+    func testLiveEmptyUsageFallsBackToLog() async throws {
+        // 서비스가 내용상 빈 응답을 emptyUsage로 던지면 스토어는 로그로 폴백해야 한다.
+        let parser = FakeRateLimitReporter(report: sessionReport(used: 88, resetsAt: futureReset))
+        let store = CodexUsageStore(
+            parser: parser,
+            service: FakeLiveReporter(.failure(CodexUsageError.emptyUsage)),
+            now: { [now] in now }
+        )
+
+        store.refresh()
+        try await waitUntilIdle(store)
+
+        XCTAssertEqual(store.lastSource, .log)
+        XCTAssertEqual(store.sessionUtilization, 88)
+        XCTAssertEqual(parser.callCount, 1)
+    }
+
+    @MainActor
+    func testLiveFailsAndLogEmptyKeepsPreviousValues() async throws {
+        let liveLimits = CodexRateLimits(
+            primary: CodexRateLimit(usedPercent: 5, windowMinutes: 10080, resetsAt: weeklyReset),
+            secondary: nil,
+            planType: "pro"
+        )
+        let service = FakeLiveReporter(.success(report(limits: liveLimits, limitReachedAt: nil)))
+        let store = CodexUsageStore(
+            parser: FakeRateLimitReporter(
+                report: CodexSessionParser.RateLimitReport(snapshots: [], latest: nil, limitReachedAt: nil)
+            ),
+            service: service,
+            now: { [now] in now }
+        )
+
+        // 1) 실시간 성공으로 값을 채운다.
+        store.refresh()
+        try await waitUntilIdle(store)
+        XCTAssertEqual(store.weeklyUtilization, 5)
+
+        // 2) 이제 실시간 실패 + 로그 빈 리포트여도 마지막 값을 지우지 않고 플래그도 내린다.
+        service.setResult(.failure(CodexUsageError.unauthorized))
+        store.refresh()
+        try await waitUntilIdle(store)
+
+        XCTAssertFalse(store.isRefreshing)
+        // 값은 이전(실시간) 것을 유지하되, 출처는 로그로 내려 신선도 신호("로그 기준")를 띄운다.
+        XCTAssertEqual(store.weeklyUtilization, 5)
+        XCTAssertEqual(store.lastSource, .log, "실시간 실패 후 폴백은 값은 유지하되 출처를 log로 표시한다")
+    }
+
+    @MainActor
+    func testLoadHistoryRebuildsFromParserThenRefreshesLiveOnce() async throws {
+        // 파서(로그)는 전체 시계열(2점)을 준다.
+        let older = CodexRateLimits(
+            primary: CodexRateLimit(usedPercent: 40, windowMinutes: 300, resetsAt: futureReset),
+            secondary: CodexRateLimit(usedPercent: 50, windowMinutes: 10080, resetsAt: weeklyReset),
+            planType: "plus"
+        )
+        let newer = CodexRateLimits(
+            primary: CodexRateLimit(usedPercent: 60, windowMinutes: 300, resetsAt: futureReset),
+            secondary: CodexRateLimit(usedPercent: 55, windowMinutes: 10080, resetsAt: weeklyReset),
+            planType: "plus"
+        )
+        let s1 = CodexSessionParser.RateLimitSnapshot(timestamp: snapshotDate.addingTimeInterval(-120), limits: older)
+        let s2 = CodexSessionParser.RateLimitSnapshot(timestamp: snapshotDate, limits: newer)
+        let parserReport = CodexSessionParser.RateLimitReport(snapshots: [s1, s2], latest: s2, limitReachedAt: nil)
+        let parser = FakeRateLimitReporter(report: parserReport)
+
+        // 실시간은 다른 값을 준다.
+        let liveLimits = CodexRateLimits(
+            primary: CodexRateLimit(usedPercent: 5, windowMinutes: 10080, resetsAt: weeklyReset),
+            secondary: nil,
+            planType: "pro"
+        )
+        let live = FakeLiveReporter(.success(report(limits: liveLimits, limitReachedAt: nil)))
+
+        let historyPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString)-history.json").path
+        let history = UsageHistoryStore(storePath: historyPath, now: { [now] in now })
+
+        let store = CodexUsageStore(parser: parser, service: live, now: { [now] in now })
+        store.configure(historyStore: history)
+
+        store.loadHistory()
+        try await waitUntil("live refresh ran after rebuild") { live.callCount >= 1 }
+        try await waitUntilIdle(store)
+
+        // 이력은 파서 전체 시계열(2점)로 재구성됐다.
+        let openaiSnapshots = history.snapshots.filter { $0.provider == .openai }
+        XCTAssertGreaterThanOrEqual(openaiSnapshots.count, 2, "loadHistory는 로그 전체 시계열로 이력을 재구성해야 한다")
+        XCTAssertEqual(parser.callCount, 1, "이력 재구성은 파서를 정확히 한 번 쓴다")
+        XCTAssertEqual(live.callCount, 1, "재구성 후 실시간을 정확히 한 번 갱신한다")
+        // 마지막 화면 값은 실시간이 덮어쓴다.
+        XCTAssertEqual(store.lastSource, .live)
+        XCTAssertEqual(store.weeklyUtilization, 5)
     }
 
     // MARK: - Helpers

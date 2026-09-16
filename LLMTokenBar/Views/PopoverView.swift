@@ -237,6 +237,13 @@ struct PopoverView: View {
                     .foregroundStyle(.secondary)
             }
 
+            // 실시간 API가 실패해 로컬 로그로 폴백했을 때만 출처를 밝혀, 오래된 기준 시각의 이유를 알린다.
+            if codexUsage.lastSource == .log {
+                Text(String(localized: "from local log"))
+                    .font(.pretendard(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+
             if codexUsage.isRefreshing {
                 ProgressView()
                     .controlSize(.mini)
