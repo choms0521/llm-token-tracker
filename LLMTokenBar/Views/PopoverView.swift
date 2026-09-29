@@ -130,6 +130,15 @@ struct PopoverView: View {
                 if let weekly = manager.claudeUsage.weeklyUsage {
                     UsageCardView(entry: weekly)
                 }
+
+                ForEach(manager.claudeUsage.modelUsages.filter { $0.id == "fable" }) { model in
+                    UsageCardView(entry: UsageEntry(
+                        label: model.modelName,
+                        sublabel: String(localized: "Weekly"),
+                        utilization: model.utilization,
+                        resetsAt: model.resetsAt
+                    ))
+                }
             }
         }
     }

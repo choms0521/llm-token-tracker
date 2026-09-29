@@ -75,7 +75,7 @@ final class ClaudeUsageService: UsageServiceProtocol {
 
         switch httpResponse.statusCode {
         case 200:
-            return try parseResponse(data)
+            return try Self.parseResponse(data)
         case 401:
             throw UsageError.unauthorized
         case 429:
@@ -93,7 +93,7 @@ final class ClaudeUsageService: UsageServiceProtocol {
         }
     }
 
-    private func parseResponse(_ data: Data) throws -> UsageData {
+    nonisolated static func parseResponse(_ data: Data) throws -> UsageData {
         let response: ClaudeUsageResponse
         do {
             response = try JSONDecoder().decode(ClaudeUsageResponse.self, from: data)
@@ -145,6 +145,24 @@ final class ClaudeUsageService: UsageServiceProtocol {
                 modelName: "Haiku",
                 utilization: haiku.utilization,
                 resetsAt: haiku.resetsAtDate
+            ))
+        }
+
+        // is_active is intentionally ignored: the live Fable weekly_scoped entry reports false.
+        // Only global (surface == nil) model-scoped limits with percent in exactly 0...100 are shown.
+        for limit in response.limits ?? [] where limit.kind == "weekly_scoped" {
+            guard limit.scope?.surface == nil,
+                  let name = limit.scope?.model?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !name.isEmpty,
+                  limit.percent.isFinite, (0...100).contains(limit.percent)
+            else { continue }
+            let id = name.lowercased()
+            guard !modelUsages.contains(where: { $0.id == id }) else { continue }
+            modelUsages.append(ModelUsage(
+                id: id,
+                modelName: name,
+                utilization: limit.percent,
+                resetsAt: limit.resetsAtDate
             ))
         }
 

@@ -11,12 +11,12 @@
         }
       }
     },
-    "Could not reach the agy language server" : {
+    "Could not run the agy CLI" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "agy 언어 서버에 연결할 수 없습니다"
+            "value" : "agy CLI를 실행할 수 없습니다"
           }
         }
       }
@@ -41,12 +41,12 @@
         }
       }
     },
-    "agy not running — showing values from %@" : {
+    "agy not found — showing values from %@" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "agy 미실행 — %@ 값 표시 중"
+            "value" : "agy 없음 — %@ 값 표시 중"
           }
         }
       }
@@ -61,22 +61,22 @@
         }
       }
     },
-    "Antigravity CLI (agy) is not running" : {
+    "Antigravity CLI (agy) not found" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antigravity CLI(agy)가 실행 중이 아닙니다"
+            "value" : "Antigravity CLI(agy)를 찾을 수 없습니다"
           }
         }
       }
     },
-    "Antigravity CLI (agy) is running" : {
+    "Antigravity CLI (agy) is available" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antigravity CLI(agy)가 실행 중입니다"
+            "value" : "Antigravity CLI(agy)를 사용할 수 있습니다"
           }
         }
       }
@@ -91,12 +91,12 @@
         }
       }
     },
-    "Start agy to see quota" : {
+    "Install agy and sign in to see quota" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "agy를 실행하면 한도가 표시됩니다"
+            "value" : "agy를 설치하고 로그인하면 한도가 표시됩니다"
           }
         }
       }
@@ -131,22 +131,22 @@
         }
       }
     },
-    "Quota is read from the local agy language server. No login required." : {
+    "Quota is read by running the local agy CLI (agy --print /usage). agy must be installed and signed in." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "한도는 로컬 agy 언어 서버에서 읽어 오며 로그인이 필요 없습니다."
+            "value" : "한도는 로컬 agy CLI(agy --print /usage)를 실행해 읽어 오며, agy 설치와 로그인이 필요합니다."
           }
         }
       }
     },
-    "Antigravity quota is queried from the local agy language server" : {
+    "Antigravity quota is queried by running the local agy CLI" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antigravity 한도는 로컬 agy 언어 서버에서 조회합니다"
+            "value" : "Antigravity 한도는 로컬 agy CLI를 실행해 조회합니다"
           }
         }
       }

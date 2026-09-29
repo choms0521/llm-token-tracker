@@ -81,8 +81,9 @@ extension Constants {
         static let rpcPath = "/exa.language_server_pb.LanguageServerService/"
         static let quotaSummaryRPC = "RetrieveUserQuotaSummary"
         static let userStatusRPC = "GetUserStatus"
-        static let pollInterval: TimeInterval = 60
-        /// agy가 없을 때의 폴링 간격. pgrep과 lsof를 매분 돌릴 이유가 없고, 팝오버를 열면 즉시 갱신한다.
+        /// 조회마다 agy CLI를 새로 띄우며 한 번에 약 6~7초 걸린다. 매분 띄우지 않도록 5분으로 두고, 팝오버의 수동 갱신은 즉시 실행한다.
+        static let pollInterval: TimeInterval = 300
+        /// agy CLI를 찾지 못했을 때의 재시도 간격. 팝오버를 열면 즉시 다시 조회한다.
         static let idlePollInterval: TimeInterval = 300
         static let requestTimeout: TimeInterval = 3
         /// pgrep, lsof 같은 외부 명령의 최대 실행 시간.
@@ -100,5 +101,21 @@ extension Constants {
         static let pgrepPath = "/usr/bin/pgrep"
         static let lsofPath = "/usr/sbin/lsof"
         static let geminiBucketPrefix = "gemini-"
+        /// 한도 보고서를 텍스트로 출력하고 끝나는 고정 인자. 사용자 입력은 섞지 않는다.
+        static let usageArguments = ["--print", "/usage"]
+        /// 실측 약 6초. 네트워크가 느린 경우를 위해 두 배 넘게 잡는다.
+        static let cliTimeout: TimeInterval = 15
+        /// SIGTERM 뒤 SIGKILL까지 기다리는 시간.
+        static let cliKillGrace: TimeInterval = 1
+        /// 자식이 끝난 뒤 남은 출력을 기다리는 시간.
+        static let cliDrainGrace: TimeInterval = 0.5
+        static let fallbackExecutableDirectories = ["/opt/homebrew/bin", "/usr/local/bin"]
+        /// 앱 환경에 PATH가 없을 때 자식에게 넘길 기본값.
+        static let fallbackSearchPath = "/usr/bin:/bin:/usr/sbin:/sbin"
+        /// agy에 물려줄 환경 변수. HOME과 PATH는 따로 채운다. 프록시와 인증서 설정은 사내망에서 CLI가 서버에 닿는 데 필요하다.
+        static let inheritedEnvironmentKeys: Set<String> = [
+            "PATH", "USER", "LOGNAME", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE",
+            "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy", "SSL_CERT_FILE",
+        ]
     }
 }
