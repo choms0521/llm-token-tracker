@@ -9,6 +9,7 @@ enum AuthError: LocalizedError {
     case invalidCredentials
     case tokenRefreshFailed(String)
     case networkError(Error)
+    case keychainAccessRequiresUserConsent
 
     var errorDescription: String? {
         switch self {
@@ -20,8 +21,18 @@ enum AuthError: LocalizedError {
             return "토큰 갱신 실패: \(reason)"
         case .networkError(let error):
             return "네트워크 오류: \(error.localizedDescription)"
+        case .keychainAccessRequiresUserConsent:
+            return "Claude Code 키체인 접근 승인이 필요합니다. Settings > Claude > Sync Credentials를 눌러 허용해주세요."
         }
     }
+}
+
+/// Outcome of reading the Claude Code credential item from the Keychain.
+enum ClaudeKeychainReadResult: Equatable {
+    case found(Data)
+    case notFound
+    case needsUserConsent(OSStatus)
+    case unavailable(OSStatus)
 }
 
 @MainActor
@@ -31,18 +42,53 @@ final class ClaudeAuthService: AuthServiceProtocol {
     private let fileManager: FileManager
     private let cliCredentialsPath: String
     private let fileCachePathOverride: URL?
-    private let keychainDataProvider: () -> Data?
+    private let keychainReader: (KeychainInteractionMode) -> ClaudeKeychainReadResult
 
     init(
         fileManager: FileManager = .default,
         cliCredentialsPath: String = Constants.Claude.credentialsPath,
         fileCachePath: URL? = nil,
-        keychainDataProvider: @escaping () -> Data? = ClaudeAuthService.defaultKeychainData
+        keychainReader: @escaping (KeychainInteractionMode) -> ClaudeKeychainReadResult = ClaudeAuthService.defaultKeychainRead
     ) {
         self.fileManager = fileManager
         self.cliCredentialsPath = cliCredentialsPath
         self.fileCachePathOverride = fileCachePath
-        self.keychainDataProvider = keychainDataProvider
+        self.keychainReader = keychainReader
+    }
+
+    convenience init(
+        fileManager: FileManager = .default,
+        cliCredentialsPath: String = Constants.Claude.credentialsPath,
+        fileCachePath: URL? = nil,
+        keychainDataProvider: @escaping () -> Data?
+    ) {
+        self.init(
+            fileManager: fileManager,
+            cliCredentialsPath: cliCredentialsPath,
+            fileCachePath: fileCachePath,
+            keychainReader: { _ in keychainDataProvider().map { .found($0) } ?? .notFound }
+        )
+    }
+
+    /// Set when a background Keychain read needed user consent; cleared once the Keychain is readable.
+    private(set) var keychainConsentHint: String?
+
+    private static let keychainConsentSuggestion =
+        "Open Settings > Claude > Sync Credentials and allow Keychain access when macOS asks."
+
+    /// Credential sources re-read on reload or explicit sync. The app cache comes last so a newer
+    /// external token replaces it, while a still-valid cache survives a failed re-read.
+    private static let refreshOrder: [ClaudeCredentialSource] = [.cliFile, .claudeKeychain, .appCache]
+
+    /// Explicit user action (Settings > Claude > Sync Credentials). The only path allowed to show
+    /// the macOS Keychain authorization dialog.
+    func syncCredentialsFromUserAction() async -> SyncStatus {
+        let inspection = inspectCredentials(sources: Self.refreshOrder, mode: .userInitiated)
+        if let candidate = inspection.validCredential {
+            keychainConsentHint = nil
+            adopt(candidate)
+        }
+        return makeSyncStatus(from: inspection)
     }
 
     func loadCredentials() async throws -> String {
@@ -55,15 +101,25 @@ final class ClaudeAuthService: AuthServiceProtocol {
         return oauth.accessToken
     }
 
+    /// Background re-read after 401/429. Never shows Keychain UI and keeps the current valid
+    /// token until a valid replacement is found.
     func reloadCredentials() async throws -> String {
-        cachedOAuth = nil
-        clearFileCache()
-        return try await loadCredentials()
+        let inspection = inspectCredentials(sources: Self.refreshOrder, mode: .background)
+        if let candidate = inspection.validCredential {
+            adopt(candidate)
+            return candidate.oauth.accessToken
+        }
+        if let cached = cachedOAuth, !cached.isExpired {
+            return cached.accessToken
+        }
+        throw Self.error(for: inspection)
     }
 
     func getSyncStatus() async -> SyncStatus {
-        let inspection = inspectCredentials()
+        makeSyncStatus(from: inspectCredentials(sources: ClaudeCredentialSource.discoveryOrder, mode: .background))
+    }
 
+    private func makeSyncStatus(from inspection: ClaudeCredentialInspection) -> SyncStatus {
         if let candidate = inspection.validCredential {
             let oauth = candidate.oauth
             let tokenPrefix = String(oauth.accessToken.prefix(6))
@@ -80,8 +136,12 @@ final class ClaudeAuthService: AuthServiceProtocol {
                 credentialSource: candidate.source,
                 expiresAt: oauth.expiresAtDate,
                 statusMessage: "Using \(candidate.source.displayName)",
-                recoverySuggestion: nil
+                recoverySuggestion: keychainConsentHint
             )
+        }
+
+        if let keychainStatus = Self.keychainIssueStatus(for: inspection) {
+            return keychainStatus
         }
 
         if let candidate = inspection.expiredCredential {
@@ -103,10 +163,31 @@ final class ClaudeAuthService: AuthServiceProtocol {
         )
     }
 
+    private static func keychainIssueStatus(for inspection: ClaudeCredentialInspection) -> SyncStatus? {
+        switch inspection.keychainIssue {
+        case .needsUserConsent:
+            return .disconnected(
+                for: .claude,
+                credentialSource: .claudeKeychain,
+                statusMessage: "Claude Code Keychain access needs your approval.",
+                recoverySuggestion: keychainConsentSuggestion
+            )
+        case .unavailable(let status) where inspection.expiredCredential == nil:
+            return .disconnected(
+                for: .claude,
+                credentialSource: .claudeKeychain,
+                statusMessage: "Claude Code Keychain could not be read (OSStatus \(status)).",
+                recoverySuggestion: keychainConsentSuggestion
+            )
+        default:
+            return nil
+        }
+    }
+
     // MARK: - Credential Reading (File Cache → CLI File → Claude Code Keychain)
 
     private func readCredentials() throws -> ClaudeOAuth {
-        let inspection = inspectCredentials()
+        let inspection = inspectCredentials(sources: ClaudeCredentialSource.discoveryOrder, mode: .background)
 
         if let candidate = inspection.validCredential {
             if candidate.source != .appCache {
@@ -115,13 +196,26 @@ final class ClaudeAuthService: AuthServiceProtocol {
             return candidate.oauth
         }
 
+        throw Self.error(for: inspection)
+    }
+
+    private func adopt(_ candidate: ClaudeCredentialCandidate) {
+        if candidate.source != .appCache {
+            saveToFileCache(candidate.oauth)
+        }
+        cachedOAuth = candidate.oauth
+    }
+
+    private static func error(for inspection: ClaudeCredentialInspection) -> AuthError {
+        if case .needsUserConsent = inspection.keychainIssue {
+            return .keychainAccessRequiresUserConsent
+        }
         if let expired = inspection.expiredCredential {
-            throw AuthError.tokenRefreshFailed(
+            return .tokenRefreshFailed(
                 "\(expired.source.displayName)에 저장된 토큰이 만료되었습니다. Claude Code CLI에서 다시 로그인한 뒤 Sync Credentials를 눌러주세요."
             )
         }
-
-        throw AuthError.credentialsNotFound
+        return .credentialsNotFound
     }
 
     private var fileCachePath: URL {
@@ -158,16 +252,44 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
     }
 
-    private func clearFileCache() {
-        try? fileManager.removeItem(at: fileCachePath)
+    private func readFromClaudeKeychain(
+        mode: KeychainInteractionMode,
+        issue: inout ClaudeKeychainReadResult?
+    ) -> ClaudeOAuth? {
+        let result = keychainReader(mode)
+        switch result {
+        case .found(let data):
+            keychainConsentHint = nil
+            return parseCredentialData(data)
+        case .notFound:
+            keychainConsentHint = nil
+        case .needsUserConsent(let status):
+            logger.info("Claude Code Keychain read needs user consent (OSStatus: \(status))")
+            keychainConsentHint = Self.keychainConsentSuggestion
+            issue = result
+        case .unavailable(let status):
+            logger.warning("Claude Code Keychain read unavailable (OSStatus: \(status))")
+            issue = result
+        }
+        return nil
     }
 
-    private func readFromClaudeKeychain() -> ClaudeOAuth? {
-        guard let data = keychainDataProvider() else { return nil }
-        return parseCredentialData(data)
+    nonisolated static func classifyKeychainRead(status: OSStatus, data: Data?) -> ClaudeKeychainReadResult {
+        switch status {
+        case errSecSuccess:
+            return data.map { .found($0) } ?? .unavailable(status)
+        case errSecItemNotFound:
+            return .notFound
+        case errSecInteractionNotAllowed, errSecInteractionRequired, errSecAuthFailed, errSecUserCanceled:
+            return .needsUserConsent(status)
+        default:
+            return .unavailable(status)
+        }
     }
 
-    private nonisolated static func defaultKeychainData() -> Data? {
+    /// Reads the Claude Code CLI item inside the shared interaction scope. `.background` never
+    /// shows UI; if the scope cannot be established the query is not executed.
+    nonisolated static func defaultKeychainRead(_ mode: KeychainInteractionMode) -> ClaudeKeychainReadResult {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "Claude Code-credentials",
@@ -175,17 +297,19 @@ final class ClaudeAuthService: AuthServiceProtocol {
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
 
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess, let data = result as? Data else {
-            if status != errSecItemNotFound {
-                logger.warning("Keychain 조회 실패 (OSStatus: \(status))")
+        do {
+            return try KeychainInteractionGuard.shared.perform(mode) {
+                var result: AnyObject?
+                let status = SecItemCopyMatching(query as CFDictionary, &result)
+                return classifyKeychainRead(status: status, data: result as? Data)
             }
-            return nil
+        } catch let error as KeychainInteractionError {
+            logger.error("Keychain interaction scope failed: \(error.localizedDescription)")
+            return .unavailable(error.status)
+        } catch {
+            logger.error("Keychain interaction scope failed unexpectedly")
+            return .unavailable(errSecInternalError)
         }
-
-        return data
     }
 
     private func readFromCLIFile() -> ClaudeOAuth? {
@@ -224,19 +348,33 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
     }
 
-    private func inspectCredentials() -> ClaudeCredentialInspection {
+    private func inspectCredentials(
+        sources: [ClaudeCredentialSource],
+        mode: KeychainInteractionMode
+    ) -> ClaudeCredentialInspection {
         var expiredCredential: ClaudeCredentialCandidate?
+        var keychainIssue: ClaudeKeychainReadResult?
 
-        for source in ClaudeCredentialSource.discoveryOrder {
-            guard let candidate = readCandidate(from: source) else { continue }
+        for source in sources {
+            let oauth: ClaudeOAuth?
+            switch source {
+            case .appCache:
+                oauth = readFromFileCache()
+            case .cliFile:
+                oauth = readFromCLIFile()
+            case .claudeKeychain:
+                oauth = readFromClaudeKeychain(mode: mode, issue: &keychainIssue)
+            }
+            guard let oauth else { continue }
 
-            if !candidate.oauth.isExpired {
+            let candidate = ClaudeCredentialCandidate(source: source, oauth: oauth)
+            if !oauth.isExpired {
                 return ClaudeCredentialInspection(
                     validCredential: candidate,
-                    expiredCredential: expiredCredential
+                    expiredCredential: expiredCredential,
+                    keychainIssue: keychainIssue
                 )
             }
-
             if expiredCredential == nil {
                 expiredCredential = candidate
             }
@@ -244,23 +382,9 @@ final class ClaudeAuthService: AuthServiceProtocol {
 
         return ClaudeCredentialInspection(
             validCredential: nil,
-            expiredCredential: expiredCredential
+            expiredCredential: expiredCredential,
+            keychainIssue: keychainIssue
         )
-    }
-
-    private func readCandidate(from source: ClaudeCredentialSource) -> ClaudeCredentialCandidate? {
-        let oauth: ClaudeOAuth?
-        switch source {
-        case .appCache:
-            oauth = readFromFileCache()
-        case .cliFile:
-            oauth = readFromCLIFile()
-        case .claudeKeychain:
-            oauth = readFromClaudeKeychain()
-        }
-
-        guard let oauth else { return nil }
-        return ClaudeCredentialCandidate(source: source, oauth: oauth)
     }
 
     private static func formatDate(_ date: Date) -> String {
@@ -280,4 +404,5 @@ private struct ClaudeCredentialCandidate {
 private struct ClaudeCredentialInspection {
     let validCredential: ClaudeCredentialCandidate?
     let expiredCredential: ClaudeCredentialCandidate?
+    let keychainIssue: ClaudeKeychainReadResult?
 }

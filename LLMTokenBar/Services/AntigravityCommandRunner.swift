@@ -34,15 +34,19 @@ struct AntigravityProcessRunner: AntigravityCommandRunning {
     /// 자식이 끝난 뒤 출력의 끝(EOF)을 기다리는 시간. 손자 프로세스가 파이프를 물고 있어도 멈추지 않는다.
     let drainGrace: TimeInterval
     let maxOutputBytes: Int
+    /// 테스트용 관찰 지점. 읽기 핸들러가 한 번 읽을 때마다 EOF 여부만 알린다. 데이터는 넘기지 않는다.
+    let readObserver: (@Sendable (_ isEndOfOutput: Bool) -> Void)?
 
     init(
         killGrace: TimeInterval = Constants.Antigravity.cliKillGrace,
         drainGrace: TimeInterval = Constants.Antigravity.cliDrainGrace,
-        maxOutputBytes: Int = Constants.Antigravity.maxResponseBytes
+        maxOutputBytes: Int = Constants.Antigravity.maxResponseBytes,
+        readObserver: (@Sendable (_ isEndOfOutput: Bool) -> Void)? = nil
     ) {
         self.killGrace = killGrace
         self.drainGrace = drainGrace
         self.maxOutputBytes = maxOutputBytes
+        self.readObserver = readObserver
     }
 
     func run(_ invocation: AntigravityCommandInvocation) async throws -> AntigravityCommandResult {
@@ -176,6 +180,7 @@ private final class ProcessExecution: @unchecked Sendable {
             if chunk.isEmpty {
                 handle.readabilityHandler = nil
             }
+            limits.readObserver?(chunk.isEmpty)
             return chunk
         }
     }

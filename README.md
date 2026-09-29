@@ -47,6 +47,8 @@ macOS 메뉴바에서 Claude, Codex, Gemini의 토큰 사용량을 실시간으�
 4. 읽은 토큰은 앱 자체 파일 캐시에 저장하여 이후 접근 비용을 줄임
 
 > 앱은 토큰을 refresh하지 않습니다. 토큰 만료 시 Claude Code CLI에서 다시 로그인해야 합니다.
+>
+> 자동 조회에서는 키체인 인증창을 띄우지 않습니다. 키체인 접근 승인이 필요하면 설정의 Claude 탭에서 **Sync Credentials**를 직접 눌러 주세요. 일반 새로고침과 다른 서비스의 재동기화는 Claude 키체인 승인을 요청하지 않습니다.
 
 ## Requirements
 

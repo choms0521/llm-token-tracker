@@ -34,8 +34,7 @@ final class UsagePollingManager: ObservableObject {
     private let minimumFetchInterval: TimeInterval = 60  // 최소 60초 간격
     private let stableThreshold = 3  // 3회 연속 동일하면 안정 상태
 
-    init() {
-        let authService = ClaudeAuthService()
+    init(claudeAuthService authService: ClaudeAuthService = ClaudeAuthService()) {
         self.claudeAuthService = authService
         self.claudeUsageService = ClaudeUsageService(authService: authService)
         self.claudeUsage = .empty(for: .claude)
@@ -162,6 +161,9 @@ final class UsagePollingManager: ObservableObject {
             } else {
                 syncStatus = await claudeAuthService.getSyncStatus()
                 errorMessage = error.localizedDescription
+                if syncStatus.isConnected, let hint = claudeAuthService.keychainConsentHint {
+                    errorMessage = "\(error.localizedDescription) \(hint)"
+                }
                 if consecutiveFailures == 1 {
                     claudeUsage = .empty(for: .claude)
                 }
@@ -274,14 +276,23 @@ final class UsagePollingManager: ObservableObject {
     func disconnect() {
         try? KeychainService.shared.delete(
             service: Constants.Keychain.serviceName,
-            account: Constants.Keychain.claudeAccount
+            account: Constants.Keychain.claudeAccount,
+            mode: .userInitiated
         )
         claudeUsage = .empty(for: .claude)
         syncStatus = .disconnected(for: .claude)
     }
 
+    /// The only Claude path that may show the macOS Keychain dialog. Called only from the
+    /// Claude "Sync Credentials" action (`syncFromCLI`), never from the shared `resync`;
+    /// the following fetch reuses the credential cached here.
+    func performUserInitiatedClaudeSync() async {
+        syncStatus = await claudeAuthService.syncCredentialsFromUserAction()
+    }
+
     func syncFromCLI() async {
         // Re-read all available Claude credential sources after the user updates CLI login state.
+        await performUserInitiatedClaudeSync()
         await fetchAll(force: true)
     }
 

@@ -39,12 +39,17 @@ final class AntigravityCommandRunnerTests: XCTestCase {
         }
     }
 
-    /// 자식이 출력을 일찍 닫고 오래 살아 있어도 읽기 핸들러가 빈 청크로 CPU를 태우지 않아야 한다.
-    func testEarlyEndOfOutputDoesNotSpinWhileChildRuns() async throws {
-        let cpuBefore = Self.processCPUTime()
+    /// 자식이 출력을 일찍 닫고 오래 살아 있어도 읽기 핸들러는 EOF를 한 번만 받아야 한다.
+    /// 핸들러를 떼지 않으면 빈 청크로 계속 불리므로 호스트 CPU와 무관하게 호출 횟수로 확인한다.
+    func testEarlyEndOfOutputIsObservedOnceWhileChildRuns() async throws {
+        let counter = EndOfOutputCounter()
+        let observed = AntigravityProcessRunner(
+            killGrace: 0.3, drainGrace: 0.2, maxOutputBytes: 64 * 1024,
+            readObserver: { isEnd in if isEnd { counter.increment() } }
+        )
 
         // exec로 같은 pid가 표준 출력을 닫은 채 계속 산다.
-        let result = try await runner.run(invocation(
+        let result = try await observed.run(invocation(
             "/bin/sh",
             ["-c", "echo hi; exec >&-; exec /bin/sleep 0.8"],
             timeout: 3
@@ -52,7 +57,7 @@ final class AntigravityCommandRunnerTests: XCTestCase {
 
         XCTAssertEqual(result.exitStatus, 0)
         XCTAssertEqual(String(decoding: result.output, as: UTF8.self), "hi\n")
-        XCTAssertLessThan(Self.processCPUTime() - cpuBefore, 0.3)
+        XCTAssertEqual(counter.value, 1)
     }
 
     /// 자식이 끝났는데 손자가 파이프를 물고 있어 EOF가 오지 않으면 일부 출력을 성공으로 돌려주지 않는다.
@@ -196,15 +201,6 @@ final class AntigravityCommandRunnerTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// 이 테스트 프로세스의 사용자 + 시스템 CPU 시간(초).
-    private static func processCPUTime() -> TimeInterval {
-        var usage = rusage()
-        getrusage(RUSAGE_SELF, &usage)
-        let user = TimeInterval(usage.ru_utime.tv_sec) + TimeInterval(usage.ru_utime.tv_usec) / 1_000_000
-        let system = TimeInterval(usage.ru_stime.tv_sec) + TimeInterval(usage.ru_stime.tv_usec) / 1_000_000
-        return user + system
-    }
-
     /// 테스트 셸이 기록한 손자 프로세스를 멈추고 사라질 때까지 잠깐 기다린다.
     private static func stopProcess(recordedIn pidFile: URL) async {
         guard let text = try? String(contentsOf: pidFile, encoding: .utf8),
@@ -224,4 +220,13 @@ private extension Result where Failure == Error {
             self = .failure(error)
         }
     }
+}
+
+private final class EndOfOutputCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int { lock.withLock { count } }
+
+    func increment() { lock.withLock { count += 1 } }
 }
