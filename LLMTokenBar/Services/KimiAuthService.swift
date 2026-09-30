@@ -50,14 +50,15 @@ final class KimiAuthService: AuthServiceProtocol {
     }
 
     func saveApiKey(_ apiKey: String) {
-        saveToKeychain(apiKey)
+        saveToKeychain(apiKey, mode: .userInitiated)
         cachedApiKey = apiKey
     }
 
     func clearApiKey() {
         try? KeychainService.shared.delete(
             service: Constants.Keychain.serviceName,
-            account: Constants.Keychain.kimiAccount
+            account: Constants.Keychain.kimiAccount,
+            mode: .userInitiated
         )
         cachedApiKey = nil
     }
@@ -72,13 +73,14 @@ final class KimiAuthService: AuthServiceProtocol {
         return String(data: data, encoding: .utf8)
     }
 
-    private func saveToKeychain(_ apiKey: String) {
+    private func saveToKeychain(_ apiKey: String, mode: KeychainInteractionMode = .background) {
         guard let data = apiKey.data(using: .utf8) else { return }
         do {
             try KeychainService.shared.save(
                 data,
                 service: Constants.Keychain.serviceName,
-                account: Constants.Keychain.kimiAccount
+                account: Constants.Keychain.kimiAccount,
+                mode: mode
             )
         } catch {
             logger.error("Keychain 저장 실패: \(error.localizedDescription)")

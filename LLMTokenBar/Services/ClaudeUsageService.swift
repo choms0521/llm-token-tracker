@@ -34,9 +34,11 @@ enum UsageError: LocalizedError {
 final class ClaudeUsageService: UsageServiceProtocol {
     let provider = Provider.claude
     private let authService: ClaudeAuthService
+    private let session: URLSession
 
-    init(authService: ClaudeAuthService) {
+    init(authService: ClaudeAuthService, session: URLSession = .shared) {
         self.authService = authService
+        self.session = session
     }
 
     func fetchUsage() async throws -> UsageData {
@@ -45,29 +47,30 @@ final class ClaudeUsageService: UsageServiceProtocol {
         do {
             return try await fetchWithToken(accessToken)
         } catch UsageError.unauthorized {
+            authService.markCredentialRejected(accessToken)
+            // Rejected tokens are excluded, so a reload can only return a different credential.
             let reloadedToken = try await authService.reloadCredentials()
-            if reloadedToken != accessToken {
+            do {
                 return try await fetchWithToken(reloadedToken)
+            } catch UsageError.unauthorized {
+                authService.markCredentialRejected(reloadedToken)
+                throw UsageError.unauthorized
             }
-            throw UsageError.unauthorized
         } catch UsageError.rateLimited(let retryAfter) {
-            // Rate limit 시 Keychain에서 최신 토큰 재로드 후 재시도
-            let reloadedToken = try await authService.reloadCredentials()
-            if reloadedToken != accessToken {
-                return try await fetchWithToken(reloadedToken)
-            }
+            // Local re-read only: no further HTTP until the cooldown ends, even with a new token.
+            _ = try? await authService.reloadCredentials()
             throw UsageError.rateLimited(retryAfter: retryAfter)
         }
     }
 
-    private func fetchWithToken(_ token: String, retryCount: Int = 0) async throws -> UsageData {
+    private func fetchWithToken(_ token: String) async throws -> UsageData {
         let url = URL(string: Constants.Claude.usageURL)!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(Constants.Claude.betaHeader, forHTTPHeaderField: "anthropic-beta")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw UsageError.networkError(URLError(.badServerResponse))
@@ -75,25 +78,32 @@ final class ClaudeUsageService: UsageServiceProtocol {
 
         switch httpResponse.statusCode {
         case 200:
-            return try parseResponse(data)
+            return try Self.parseResponse(data)
         case 401:
             throw UsageError.unauthorized
         case 429:
-            if retryCount < 1 {
-                let delay: TimeInterval = httpResponse.value(forHTTPHeaderField: "Retry-After")
-                    .flatMap(TimeInterval.init) ?? 3.0
-                try await Task.sleep(for: .seconds(min(delay, 10.0)))
-                return try await fetchWithToken(token, retryCount: retryCount + 1)
-            }
-            let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
-                .flatMap(TimeInterval.init)
+            let retryAfter = Self.parseRetryAfter(httpResponse.value(forHTTPHeaderField: "Retry-After"))
             throw UsageError.rateLimited(retryAfter: retryAfter)
         default:
             throw UsageError.invalidResponse(httpResponse.statusCode)
         }
     }
 
-    private func parseResponse(_ data: Data) throws -> UsageData {
+    /// Retry-After as delta-seconds or HTTP-date. Malformed, negative or non-finite values give nil.
+    nonisolated static func parseRetryAfter(_ value: String?, now: Date = Date()) -> TimeInterval? {
+        guard let text = value?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
+        if let seconds = TimeInterval(text) {
+            return seconds.isFinite && seconds >= 0 ? seconds : nil
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "GMT")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        guard let date = formatter.date(from: text) else { return nil }
+        return max(0, date.timeIntervalSince(now))
+    }
+
+    nonisolated static func parseResponse(_ data: Data) throws -> UsageData {
         let response: ClaudeUsageResponse
         do {
             response = try JSONDecoder().decode(ClaudeUsageResponse.self, from: data)
@@ -145,6 +155,24 @@ final class ClaudeUsageService: UsageServiceProtocol {
                 modelName: "Haiku",
                 utilization: haiku.utilization,
                 resetsAt: haiku.resetsAtDate
+            ))
+        }
+
+        // is_active is intentionally ignored: the live Fable weekly_scoped entry reports false.
+        // Only global (surface == nil) model-scoped limits with percent in exactly 0...100 are shown.
+        for limit in response.limits ?? [] where limit.kind == "weekly_scoped" {
+            guard limit.scope?.surface == nil,
+                  let name = limit.scope?.model?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !name.isEmpty,
+                  limit.percent.isFinite, (0...100).contains(limit.percent)
+            else { continue }
+            let id = name.lowercased()
+            guard !modelUsages.contains(where: { $0.id == id }) else { continue }
+            modelUsages.append(ModelUsage(
+                id: id,
+                modelName: name,
+                utilization: limit.percent,
+                resetsAt: limit.resetsAtDate
             ))
         }
 

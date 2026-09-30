@@ -34,10 +34,12 @@ final class UsagePollingManager: ObservableObject {
     private let minimumFetchInterval: TimeInterval = 60  // 최소 60초 간격
     private let stableThreshold = 3  // 3회 연속 동일하면 안정 상태
 
-    init() {
-        let authService = ClaudeAuthService()
+    init(
+        claudeAuthService authService: ClaudeAuthService = ClaudeAuthService(),
+        claudeUsageService: ClaudeUsageService? = nil
+    ) {
         self.claudeAuthService = authService
-        self.claudeUsageService = ClaudeUsageService(authService: authService)
+        self.claudeUsageService = claudeUsageService ?? ClaudeUsageService(authService: authService)
         self.claudeUsage = .empty(for: .claude)
         self.syncStatus = .disconnected(for: .claude)
 
@@ -114,7 +116,12 @@ final class UsagePollingManager: ObservableObject {
         isLoading = false
     }
 
-    private func fetchClaude() async {
+    /// Every Claude fetch (polling, refresh, sync, resync) honors the cooldown before auth or network.
+    func fetchClaude() async {
+        if let rateLimitedUntil, Date() < rateLimitedUntil {
+            applyRateLimitMessage()
+            return
+        }
         syncStatus = await claudeAuthService.getSyncStatus()
 
         do {
@@ -152,21 +159,23 @@ final class UsagePollingManager: ObservableObject {
                     rateLimitedUntil = Date().addingTimeInterval(backoff)
                 }
 
-                let hasCache = claudeUsage.sessionUsage != nil || !claudeUsage.modelUsages.isEmpty
-                if hasCache {
-                    let minutes = Int(ceil((rateLimitedUntil?.timeIntervalSinceNow ?? 600) / 60))
-                    errorMessage = "Rate limit - \(minutes)분 후 자동 재시도"
-                } else {
-                    errorMessage = error.localizedDescription
-                }
+                applyRateLimitMessage()
             } else {
                 syncStatus = await claudeAuthService.getSyncStatus()
                 errorMessage = error.localizedDescription
+                if syncStatus.isConnected, let hint = claudeAuthService.keychainConsentHint {
+                    errorMessage = "\(error.localizedDescription) \(hint)"
+                }
                 if consecutiveFailures == 1 {
                     claudeUsage = .empty(for: .claude)
                 }
             }
         }
+    }
+
+    private func applyRateLimitMessage() {
+        let minutes = Int(ceil((rateLimitedUntil?.timeIntervalSinceNow ?? 600) / 60))
+        errorMessage = "Rate limit - \(minutes)분 후 자동 재시도"
     }
 
     private func fetchMiniMax() async {
@@ -274,14 +283,23 @@ final class UsagePollingManager: ObservableObject {
     func disconnect() {
         try? KeychainService.shared.delete(
             service: Constants.Keychain.serviceName,
-            account: Constants.Keychain.claudeAccount
+            account: Constants.Keychain.claudeAccount,
+            mode: .userInitiated
         )
         claudeUsage = .empty(for: .claude)
         syncStatus = .disconnected(for: .claude)
     }
 
+    /// The only Claude path that may show the macOS Keychain dialog. Called only from the
+    /// Claude "Sync Credentials" action (`syncFromCLI`), never from the shared `resync`;
+    /// the following fetch reuses the credential cached here.
+    func performUserInitiatedClaudeSync() async {
+        syncStatus = await claudeAuthService.syncCredentialsFromUserAction()
+    }
+
     func syncFromCLI() async {
         // Re-read all available Claude credential sources after the user updates CLI login state.
+        await performUserInitiatedClaudeSync()
         await fetchAll(force: true)
     }
 

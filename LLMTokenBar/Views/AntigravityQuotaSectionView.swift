@@ -4,8 +4,8 @@ import SwiftUI
 enum AntigravityQuotaPresentation {
     static func title(for error: AntigravityQuotaError) -> String {
         switch error {
-        case .serverNotRunning: return String(localized: "Antigravity CLI (agy) is not running")
-        case .unreachable: return String(localized: "Could not reach the agy language server")
+        case .serverNotRunning: return String(localized: "Antigravity CLI (agy) not found")
+        case .unreachable: return String(localized: "Could not run the agy CLI")
         case .badResponse: return String(localized: "agy returned an unexpected response")
         }
     }
@@ -21,7 +21,7 @@ enum AntigravityQuotaPresentation {
         case .connected, .checking:
             return nil
         case .notRunning:
-            return String(localized: "agy not running — showing values from \(timeString)")
+            return String(localized: "agy not found — showing values from \(timeString)")
         case .error(let error):
             let reason = title(for: error)
             return String(localized: "Refresh failed: \(reason) — showing values from \(timeString)")
@@ -58,7 +58,7 @@ enum AntigravityQuotaPresentation {
     }
 }
 
-/// 팝오버의 Gemini(Antigravity) 구역. agy 언어 서버에서 받은 한도를 그린다.
+/// 팝오버의 Gemini(Antigravity) 구역. agy CLI(`agy --print /usage`)로 읽은 한도를 그린다.
 struct AntigravityQuotaSectionView: View {
     @ObservedObject var store: AntigravityQuotaStore
 
@@ -155,8 +155,8 @@ struct AntigravityQuotaSectionView: View {
             hintBox(primary: String(localized: "Checking Antigravity CLI (agy)"), secondary: nil)
         case .notRunning:
             hintBox(
-                primary: String(localized: "Antigravity CLI (agy) is not running"),
-                secondary: String(localized: "Start agy to see quota")
+                primary: String(localized: "Antigravity CLI (agy) not found"),
+                secondary: String(localized: "Install agy and sign in to see quota")
             )
         case .error(let error):
             hintBox(

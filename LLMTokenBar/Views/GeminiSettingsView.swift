@@ -28,8 +28,8 @@ struct GeminiSettingsView: View {
     private var antigravityStatusText: String {
         switch antigravity.status {
         case .checking: return String(localized: "Checking Antigravity CLI (agy)")
-        case .connected: return String(localized: "Antigravity CLI (agy) is running")
-        case .notRunning: return String(localized: "Antigravity CLI (agy) is not running")
+        case .connected: return String(localized: "Antigravity CLI (agy) is available")
+        case .notRunning: return String(localized: "Antigravity CLI (agy) not found")
         case .error(let error): return AntigravityQuotaPresentation.title(for: error)
         }
     }
@@ -71,7 +71,7 @@ struct GeminiSettingsView: View {
                 )
             }
 
-            Text("Quota is read from the local agy language server. No login required.")
+            Text("Quota is read by running the local agy CLI (agy --print /usage). agy must be installed and signed in.")
                 .font(.pretendard(size: 11))
                 .foregroundStyle(.secondary)
         }
@@ -153,7 +153,7 @@ struct GeminiSettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 BulletText("Parses session logs stored locally by Gemini CLI")
                 BulletText("View with Gemini filter in Token Stats tab")
-                BulletText("Antigravity quota is queried from the local agy language server")
+                BulletText("Antigravity quota is queried by running the local agy CLI")
             }
             .padding(.leading, 4)
         }

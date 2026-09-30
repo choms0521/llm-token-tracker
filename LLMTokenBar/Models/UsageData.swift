@@ -41,8 +41,24 @@ struct ClaudeUsageResponse: Decodable {
     let sevenDayOauthApps: UsageBucket?
     let sevenDayCowork: UsageBucket?
     let extraUsage: ExtraUsage?
+    let limits: [UsageLimit]?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        fiveHour = try c.decodeIfPresent(UsageBucket.self, forKey: .fiveHour)
+        sevenDay = try c.decodeIfPresent(UsageBucket.self, forKey: .sevenDay)
+        sevenDaySonnet = try c.decodeIfPresent(UsageBucket.self, forKey: .sevenDaySonnet)
+        sevenDayOpus = try c.decodeIfPresent(UsageBucket.self, forKey: .sevenDayOpus)
+        sevenDayHaiku = try c.decodeIfPresent(UsageBucket.self, forKey: .sevenDayHaiku)
+        sevenDayOauthApps = try c.decodeIfPresent(UsageBucket.self, forKey: .sevenDayOauthApps)
+        sevenDayCowork = try c.decodeIfPresent(UsageBucket.self, forKey: .sevenDayCowork)
+        extraUsage = try c.decodeIfPresent(ExtraUsage.self, forKey: .extraUsage)
+        // limits[] is undocumented: skip malformed entries instead of failing the whole response
+        limits = (try? c.decodeIfPresent([LossyLimit].self, forKey: .limits))?.compactMap(\.value)
+    }
 
     enum CodingKeys: String, CodingKey {
+        case limits
         case fiveHour = "five_hour"
         case sevenDay = "seven_day"
         case sevenDaySonnet = "seven_day_sonnet"
@@ -51,6 +67,43 @@ struct ClaudeUsageResponse: Decodable {
         case sevenDayOauthApps = "seven_day_oauth_apps"
         case sevenDayCowork = "seven_day_cowork"
         case extraUsage = "extra_usage"
+    }
+}
+
+struct UsageLimit: Decodable {
+    struct Scope: Decodable {
+        struct Model: Decodable {
+            let displayName: String?
+
+            enum CodingKeys: String, CodingKey {
+                case displayName = "display_name"
+            }
+        }
+
+        let model: Model?
+        let surface: String?
+    }
+
+    let kind: String
+    let percent: Double
+    let resetsAt: String?
+    let scope: Scope?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, percent, scope
+        case resetsAt = "resets_at"
+    }
+
+    var resetsAtDate: Date? {
+        UsageBucket(utilization: percent, resetsAt: resetsAt).resetsAtDate
+    }
+}
+
+private struct LossyLimit: Decodable {
+    let value: UsageLimit?
+
+    init(from decoder: Decoder) throws {
+        value = try? UsageLimit(from: decoder)
     }
 }
 

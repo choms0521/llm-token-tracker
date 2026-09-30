@@ -27,7 +27,7 @@ final class AntigravityQuotaStore: ObservableObject {
     private var timer: Timer?
     private var isPolling = false
 
-    init(client: any AntigravityQuotaFetching = AntigravityQuotaClient()) {
+    init(client: any AntigravityQuotaFetching = AntigravityCLIQuotaClient()) {
         self.client = client
     }
 
@@ -53,7 +53,7 @@ final class AntigravityQuotaStore: ObservableObject {
         guard !isRefreshing else { return }
         isRefreshing = true
 
-        // 프로세스 탐색이 명령 제한 시간만큼 막힐 수 있어 메인 액터 밖에서 돌린다.
+        // agy 실행이 수 초 걸리므로 메인 액터 밖에서 돌린다. stopPolling의 취소는 자식 프로세스까지 멈춘다.
         let client = self.client
         refreshTask = Task.detached(priority: .utility) { [weak self] in
             let outcome: Result<AntigravityQuotaFetchResult, Error>
@@ -92,6 +92,8 @@ final class AntigravityQuotaStore: ObservableObject {
 
     private func apply(_ outcome: Result<AntigravityQuotaFetchResult, Error>) {
         isRefreshing = false
+        // 폴링을 멈춰 취소된 조회는 실패가 아니므로 상태를 바꾸지 않는다.
+        if case .failure(let error) = outcome, error is CancellationError { return }
         switch outcome {
         case .success(let result):
             summary = result.summary
@@ -119,7 +121,7 @@ final class AntigravityQuotaStore: ObservableObject {
 
     private func log(_ error: Error) {
         if case .serverNotRunning? = error as? AntigravityQuotaError {
-            logger.debug("agy not running, quota unavailable")
+            logger.debug("agy executable not found, quota unavailable")
         } else {
             logger.error("Antigravity quota refresh failed: \(String(describing: error), privacy: .public)")
         }

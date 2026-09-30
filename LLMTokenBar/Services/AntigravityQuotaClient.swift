@@ -4,7 +4,7 @@ protocol AntigravityQuotaFetching: Sendable {
     func fetchQuota() async throws -> AntigravityQuotaFetchResult
 }
 
-/// agy 언어 서버의 로컬 RPC로 한도를 조회한다. 인증 헤더는 필요 없다.
+/// 인증 없는 로컬 RPC를 제공하는 구버전 agy용 클라이언트. 현재 앱은 AntigravityCLIQuotaClient를 사용한다.
 /// 최악의 경우 프로세스 탐색(명령 2회 × commandTimeout)과 엔드포인트 수 × requestTimeout만큼 걸린다.
 final class AntigravityQuotaClient: AntigravityQuotaFetching {
     private let locator: any AntigravityEndpointLocating
