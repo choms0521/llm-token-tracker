@@ -34,9 +34,12 @@ final class UsagePollingManager: ObservableObject {
     private let minimumFetchInterval: TimeInterval = 60  // 최소 60초 간격
     private let stableThreshold = 3  // 3회 연속 동일하면 안정 상태
 
-    init(claudeAuthService authService: ClaudeAuthService = ClaudeAuthService()) {
+    init(
+        claudeAuthService authService: ClaudeAuthService = ClaudeAuthService(),
+        claudeUsageService: ClaudeUsageService? = nil
+    ) {
         self.claudeAuthService = authService
-        self.claudeUsageService = ClaudeUsageService(authService: authService)
+        self.claudeUsageService = claudeUsageService ?? ClaudeUsageService(authService: authService)
         self.claudeUsage = .empty(for: .claude)
         self.syncStatus = .disconnected(for: .claude)
 
@@ -113,7 +116,12 @@ final class UsagePollingManager: ObservableObject {
         isLoading = false
     }
 
-    private func fetchClaude() async {
+    /// Every Claude fetch (polling, refresh, sync, resync) honors the cooldown before auth or network.
+    func fetchClaude() async {
+        if let rateLimitedUntil, Date() < rateLimitedUntil {
+            applyRateLimitMessage()
+            return
+        }
         syncStatus = await claudeAuthService.getSyncStatus()
 
         do {
@@ -151,13 +159,7 @@ final class UsagePollingManager: ObservableObject {
                     rateLimitedUntil = Date().addingTimeInterval(backoff)
                 }
 
-                let hasCache = claudeUsage.sessionUsage != nil || !claudeUsage.modelUsages.isEmpty
-                if hasCache {
-                    let minutes = Int(ceil((rateLimitedUntil?.timeIntervalSinceNow ?? 600) / 60))
-                    errorMessage = "Rate limit - \(minutes)분 후 자동 재시도"
-                } else {
-                    errorMessage = error.localizedDescription
-                }
+                applyRateLimitMessage()
             } else {
                 syncStatus = await claudeAuthService.getSyncStatus()
                 errorMessage = error.localizedDescription
@@ -169,6 +171,11 @@ final class UsagePollingManager: ObservableObject {
                 }
             }
         }
+    }
+
+    private func applyRateLimitMessage() {
+        let minutes = Int(ceil((rateLimitedUntil?.timeIntervalSinceNow ?? 600) / 60))
+        errorMessage = "Rate limit - \(minutes)분 후 자동 재시도"
     }
 
     private func fetchMiniMax() async {

@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import OSLog
 import Security
@@ -39,6 +40,8 @@ enum ClaudeKeychainReadResult: Equatable {
 final class ClaudeAuthService: AuthServiceProtocol {
     let provider = Provider.claude
     private var cachedOAuth: ClaudeOAuth?
+    /// SHA-256 fingerprints of tokens the server answered with 401. Memory only; never persisted.
+    private var rejectedFingerprints: Set<String> = []
     private let fileManager: FileManager
     private let cliCredentialsPath: String
     private let fileCachePathOverride: URL?
@@ -80,10 +83,14 @@ final class ClaudeAuthService: AuthServiceProtocol {
     /// external token replaces it, while a still-valid cache survives a failed re-read.
     private static let refreshOrder: [ClaudeCredentialSource] = [.cliFile, .claudeKeychain, .appCache]
 
+    /// Explicit sync prefers the live Keychain, then the CLI file. The app cache is excluded so a
+    /// stale or server-rejected copy is never adopted as a fresh sync.
+    private static let userSyncOrder: [ClaudeCredentialSource] = [.claudeKeychain, .cliFile]
+
     /// Explicit user action (Settings > Claude > Sync Credentials). The only path allowed to show
     /// the macOS Keychain authorization dialog.
     func syncCredentialsFromUserAction() async -> SyncStatus {
-        let inspection = inspectCredentials(sources: Self.refreshOrder, mode: .userInitiated)
+        let inspection = inspectCredentials(sources: Self.userSyncOrder, mode: .userInitiated)
         if let candidate = inspection.validCredential {
             keychainConsentHint = nil
             adopt(candidate)
@@ -92,7 +99,7 @@ final class ClaudeAuthService: AuthServiceProtocol {
     }
 
     func loadCredentials() async throws -> String {
-        if let cached = cachedOAuth, !cached.isExpired {
+        if let cached = cachedOAuth, !cached.isExpired, !isRejected(cached) {
             return cached.accessToken
         }
 
@@ -109,10 +116,30 @@ final class ClaudeAuthService: AuthServiceProtocol {
             adopt(candidate)
             return candidate.oauth.accessToken
         }
-        if let cached = cachedOAuth, !cached.isExpired {
+        if let cached = cachedOAuth, !cached.isExpired, !isRejected(cached) {
             return cached.accessToken
         }
         throw Self.error(for: inspection)
+    }
+
+    /// Records a token the server rejected with 401 so no read path returns it again. Only the
+    /// matching app cache is cleared; the CLI file and Keychain are never written.
+    func markCredentialRejected(_ token: String) {
+        rejectedFingerprints.insert(Self.fingerprint(token))
+        if let cached = cachedOAuth, cached.accessToken == token {
+            cachedOAuth = nil
+        }
+        if let stored = readFromFileCache(), stored.accessToken == token {
+            try? fileManager.removeItem(at: fileCachePath)
+        }
+    }
+
+    private func isRejected(_ oauth: ClaudeOAuth) -> Bool {
+        rejectedFingerprints.contains(Self.fingerprint(oauth.accessToken))
+    }
+
+    private static func fingerprint(_ token: String) -> String {
+        SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     func getSyncStatus() async -> SyncStatus {
@@ -365,7 +392,7 @@ final class ClaudeAuthService: AuthServiceProtocol {
             case .claudeKeychain:
                 oauth = readFromClaudeKeychain(mode: mode, issue: &keychainIssue)
             }
-            guard let oauth else { continue }
+            guard let oauth, !isRejected(oauth) else { continue }
 
             let candidate = ClaudeCredentialCandidate(source: source, oauth: oauth)
             if !oauth.isExpired {

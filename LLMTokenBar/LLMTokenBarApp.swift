@@ -25,6 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var displaySettingsObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Unit-test host: never build services or start polling (would hit real credentials/network).
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            || NSClassFromString("XCTestCase") != nil {
+            return
+        }
         NSApp.setActivationPolicy(.accessory)
 
         let pollingManager = UsagePollingManager()
