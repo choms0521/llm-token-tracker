@@ -23,7 +23,7 @@ enum AuthError: LocalizedError {
         case .networkError(let error):
             return "네트워크 오류: \(error.localizedDescription)"
         case .keychainAccessRequiresUserConsent:
-            return "Claude Code 키체인 접근 승인이 필요합니다. Settings > Claude > Sync Credentials를 눌러 허용해주세요."
+            return "Claude Code 키체인을 읽지 못했습니다. 로그인 키체인 잠금을 해제하거나 Claude Code에 다시 로그인한 뒤 Settings > Claude > Sync Credentials를 눌러주세요."
         }
     }
 }
@@ -77,7 +77,7 @@ final class ClaudeAuthService: AuthServiceProtocol {
     private(set) var keychainConsentHint: String?
 
     private static let keychainConsentSuggestion =
-        "Open Settings > Claude > Sync Credentials and allow Keychain access when macOS asks."
+        "Unlock the login Keychain or sign in to Claude Code again, then open Settings > Claude > Sync Credentials."
 
     /// Credential sources re-read on reload or explicit sync. The app cache comes last so a newer
     /// external token replaces it, while a still-valid cache survives a failed re-read.
@@ -314,9 +314,15 @@ final class ClaudeAuthService: AuthServiceProtocol {
         }
     }
 
+    /// Reads the Claude Code CLI item through `/usr/bin/security`, which stays trusted by the item
+    /// when the CLI recreates it. Only a user action falls back to the in-process read.
+    nonisolated static func defaultKeychainRead(_ mode: KeychainInteractionMode) -> ClaudeKeychainReadResult {
+        ClaudeKeychainCLIReader(inProcessRead: inProcessKeychainRead).read(mode)
+    }
+
     /// Reads the Claude Code CLI item inside the shared interaction scope. `.background` never
     /// shows UI; if the scope cannot be established the query is not executed.
-    nonisolated static func defaultKeychainRead(_ mode: KeychainInteractionMode) -> ClaudeKeychainReadResult {
+    nonisolated static func inProcessKeychainRead(_ mode: KeychainInteractionMode) -> ClaudeKeychainReadResult {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "Claude Code-credentials",
