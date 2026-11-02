@@ -178,7 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         return switch metric {
         case "session":
-            usage.sessionUsage?.utilization
+            usage.statusBarSessionUtilization
         case "weekly":
             usage.weeklyUsage?.utilization
         case "opus":
@@ -188,7 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "haiku":
             usage.modelUsages.first(where: { $0.id == "haiku" })?.utilization
         default:
-            usage.sessionUsage?.utilization
+            usage.statusBarSessionUtilization
         }
     }
 

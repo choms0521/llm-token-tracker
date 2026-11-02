@@ -149,6 +149,31 @@ final class ClaudeUsageServiceTests: XCTestCase {
         XCTAssertEqual(data.modelUsages.map(\.id), ["opus"])
     }
 
+    func testMissingFiveHourWindowFallsBackToWeeklyForStatusBar() throws {
+        let data = try parse("""
+        {"five_hour": null,
+         "seven_day": {"utilization": 42.0, "resets_at": "2026-11-05T17:59:59+00:00"}}
+        """)
+
+        XCTAssertNil(data.sessionUsage)
+        XCTAssertEqual(data.statusBarSessionUtilization, 42.0)
+    }
+
+    func testFiveHourWindowIsPreferredForStatusBar() throws {
+        let data = try parse("""
+        {"five_hour": {"utilization": 24.0, "resets_at": "2026-11-02T06:19:59+00:00"},
+         "seven_day": {"utilization": 42.0, "resets_at": "2026-11-05T17:59:59+00:00"}}
+        """)
+
+        XCTAssertEqual(data.statusBarSessionUtilization, 24.0)
+    }
+
+    func testStatusBarSessionUtilizationIsNilWithoutAnyWindow() throws {
+        let data = try parse("{}")
+
+        XCTAssertNil(data.statusBarSessionUtilization)
+    }
+
     func testMalformedLegacyBucketStillThrows() {
         XCTAssertThrowsError(try parse("""
         {"five_hour": {"utilization": "bad"}}
