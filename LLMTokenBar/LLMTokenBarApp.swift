@@ -197,7 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         switch metric {
         case "session":
-            return antigravity.sessionBucket(in: group)?.usedPercent
+            return group.statusBarSessionUsedPercent
         case "weekly":
             return antigravity.weeklyBucket(in: group)?.usedPercent
         default:
