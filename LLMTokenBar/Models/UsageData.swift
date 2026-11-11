@@ -16,6 +16,13 @@ struct UsageData: Equatable {
             lastUpdated: Date()
         )
     }
+
+    /// Value for the status bar "session" metric. Plans without a 5-hour
+    /// window (e.g. Claude Ultra) only enforce the weekly limit, so the
+    /// weekly utilization is shown instead of leaving the item empty.
+    var statusBarSessionUtilization: Double? {
+        sessionUsage?.utilization ?? weeklyUsage?.utilization
+    }
 }
 
 struct UsageEntry: Equatable {
