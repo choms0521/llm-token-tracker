@@ -154,6 +154,31 @@ final class AntigravityQuotaStoreTests: XCTestCase {
         XCTAssertEqual(store.otherGroups.map(\.displayName), ["Claude and GPT models"])
     }
 
+    func testStatusBarSessionPrefersFiveHourBucket() {
+        let group = AntigravityQuotaGroup(displayName: "Gemini Models", buckets: [
+            AntigravityQuotaBucket(id: "gemini-weekly", displayName: "Weekly", window: .weekly, usedPercent: 3, resetsAt: nil),
+            AntigravityQuotaBucket(id: "gemini-5h", displayName: "5h", window: .fiveHour, usedPercent: 12, resetsAt: nil),
+        ])
+
+        XCTAssertEqual(group.statusBarSessionUsedPercent, 12)
+    }
+
+    func testStatusBarSessionFallsBackToWeeklyWithoutFiveHourBucket() {
+        let group = AntigravityQuotaGroup(displayName: "Gemini Models", buckets: [
+            AntigravityQuotaBucket(id: "gemini-weekly", displayName: "Weekly", window: .weekly, usedPercent: 37, resetsAt: nil),
+        ])
+
+        XCTAssertEqual(group.statusBarSessionUsedPercent, 37)
+    }
+
+    func testStatusBarSessionIsNilWithoutKnownWindows() {
+        let group = AntigravityQuotaGroup(displayName: "Gemini Models", buckets: [
+            AntigravityQuotaBucket(id: "gemini-daily", displayName: "Daily", window: .other("daily"), usedPercent: 5, resetsAt: nil),
+        ])
+
+        XCTAssertNil(group.statusBarSessionUsedPercent)
+    }
+
     // MARK: - Helpers
 
     private func sampleResult(planName: String?) -> AntigravityQuotaFetchResult {

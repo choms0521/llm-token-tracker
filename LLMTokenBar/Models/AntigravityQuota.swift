@@ -44,6 +44,11 @@ struct AntigravityQuotaGroup: Identifiable, Equatable, Sendable {
     func bucket(for window: AntigravityQuotaWindow) -> AntigravityQuotaBucket? {
         buckets.first { $0.window == window }
     }
+
+    /// 상태 막대의 "세션" 값. 5시간 창이 없으면 주간 창만 적용되므로 주간 사용률로 대신한다.
+    var statusBarSessionUsedPercent: Double? {
+        (bucket(for: .fiveHour) ?? bucket(for: .weekly))?.usedPercent
+    }
 }
 
 struct AntigravityQuotaSummary: Equatable, Sendable {
