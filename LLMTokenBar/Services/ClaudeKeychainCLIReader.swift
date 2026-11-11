@@ -23,7 +23,7 @@ struct ClaudeKeychainCLIReader {
     static let itemNotFoundExitStatus: Int32 = 44
     static let backgroundTimeout: TimeInterval = 5
     /// A user action may wait for the tool if macOS still shows a dialog for it.
-    static let userInitiatedTimeout: TimeInterval = 60
+    static let userInitiatedTimeout: TimeInterval = 10
 
     private let runSecurity: SecurityRunner
     private let isKeychainUnlocked: () -> Bool
