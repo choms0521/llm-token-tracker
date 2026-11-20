@@ -11,10 +11,9 @@ final class TokenStatsService: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var lastSyncedAt: Date?
 
-    private let claudeParser: ClaudeSessionParser
-    private let geminiParser: GeminiSessionParser
-    private let codexParser: CodexSessionParser
-    private let kimiParser: KimiSessionParser
+    private let parseAll: @Sendable () async -> TokenStatsParseResult
+    /// Non-nil while a parse is running. Parsing is synchronous and cannot be cancelled,
+    /// so overlapping requests are dropped instead of starting a second full scan.
     private var currentReloadTask: Task<Void, Never>?
 
     private static let cacheInterval: TimeInterval = 3600 // 1시간
@@ -29,17 +28,31 @@ final class TokenStatsService: ObservableObject {
     }()
     private let cachePath: String?
 
-    init(
+    convenience init(
         claudeParser: ClaudeSessionParser = ClaudeSessionParser(),
         geminiParser: GeminiSessionParser = GeminiSessionParser(),
         codexParser: CodexSessionParser = CodexSessionParser(),
         kimiParser: KimiSessionParser = KimiSessionParser(),
         cachePath: String? = defaultCachePath
     ) {
-        self.claudeParser = claudeParser
-        self.geminiParser = geminiParser
-        self.codexParser = codexParser
-        self.kimiParser = kimiParser
+        self.init(
+            parseAll: {
+                await Self.parseInBackground(
+                    claude: claudeParser,
+                    gemini: geminiParser,
+                    codex: codexParser,
+                    kimi: kimiParser
+                )
+            },
+            cachePath: cachePath
+        )
+    }
+
+    init(
+        parseAll: @escaping @Sendable () async -> TokenStatsParseResult,
+        cachePath: String? = defaultCachePath
+    ) {
+        self.parseAll = parseAll
         self.cachePath = cachePath
         if cachePath != nil {
             loadCache()
@@ -55,20 +68,15 @@ final class TokenStatsService: ObservableObject {
         forceReload()
     }
 
-    /// 캐시 무시하고 강제 파싱
+    /// 캐시 무시하고 강제 파싱. 이미 파싱 중이면 진행 중인 결과를 그대로 사용한다.
     func forceReload() {
-        currentReloadTask?.cancel()
+        guard currentReloadTask == nil else { return }
         isLoading = true
 
         let startTime = ContinuousClock.now
 
-        currentReloadTask = Task.detached(priority: .utility) { [claudeParser, geminiParser, codexParser, kimiParser] in
-            let result = await Self.parseInBackground(
-                claude: claudeParser,
-                gemini: geminiParser,
-                codex: codexParser,
-                kimi: kimiParser
-            )
+        currentReloadTask = Task.detached(priority: .utility) { [parseAll] in
+            let result = await parseAll()
 
             let elapsed = ContinuousClock.now - startTime
             if elapsed < .milliseconds(500) {
@@ -76,7 +84,8 @@ final class TokenStatsService: ObservableObject {
             }
 
             await MainActor.run { [weak self] in
-                guard let self, !Task.isCancelled else { return }
+                guard let self else { return }
+                self.currentReloadTask = nil
                 self.dailyTokens = result.tokens
                 self.modelSummaries = result.summaries
                 self.totalCost = result.cost
@@ -130,7 +139,7 @@ final class TokenStatsService: ObservableObject {
         gemini: GeminiSessionParser,
         codex: CodexSessionParser,
         kimi: KimiSessionParser
-    ) async -> (tokens: [DailyTokenEntry], summaries: [ModelSummary], cost: Double) {
+    ) async -> TokenStatsParseResult {
         let claudeData = claude.parse()
         let geminiData = gemini.parse()
         let codexData = codex.parse()
@@ -151,7 +160,7 @@ final class TokenStatsService: ObservableObject {
         summaries.sort { $0.totalTokens > $1.totalTokens }
 
         let cost = summaries.reduce(0) { $0 + $1.costUSD }
-        return (tokens, summaries, cost)
+        return TokenStatsParseResult(tokens: tokens, summaries: summaries, cost: cost)
     }
 
     var allModelIds: [String] {
@@ -175,6 +184,12 @@ final class TokenStatsService: ObservableObject {
             .map { RecentModelUsage(id: $0.key, modelId: $0.key, tokens: $0.value) }
             .sorted { $0.tokens > $1.tokens }
     }
+}
+
+struct TokenStatsParseResult: Sendable {
+    let tokens: [DailyTokenEntry]
+    let summaries: [ModelSummary]
+    let cost: Double
 }
 
 struct RecentModelUsage: Identifiable {

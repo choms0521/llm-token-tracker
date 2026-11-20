@@ -129,6 +129,61 @@ final class TokenStatsServiceTests: XCTestCase {
         XCTAssertEqual(service.totalCost, 0)
     }
 
+    @MainActor
+    func testReloadWhileParsingDoesNotStartAnotherParse() async throws {
+        let counter = ParseCounter()
+        let service = TokenStatsService(
+            parseAll: {
+                counter.increment()
+                try? await Task.sleep(for: .milliseconds(300))
+                return TokenStatsParseResult(tokens: [], summaries: [], cost: 0)
+            },
+            cachePath: nil
+        )
+
+        // Launch path: initial reload, subscription replay, first usage fetch.
+        service.reload()
+        service.reload()
+        service.reload()
+        service.forceReload()
+
+        await waitUntilIdle(service)
+
+        XCTAssertEqual(counter.value, 1)
+        XCTAssertNotNil(service.lastSyncedAt)
+    }
+
+    @MainActor
+    func testForceReloadAfterCompletionStartsNewParse() async throws {
+        let counter = ParseCounter()
+        let service = TokenStatsService(
+            parseAll: {
+                counter.increment()
+                return TokenStatsParseResult(tokens: [], summaries: [], cost: 0)
+            },
+            cachePath: nil
+        )
+
+        service.forceReload()
+        await waitUntilIdle(service)
+        service.forceReload()
+        await waitUntilIdle(service)
+
+        XCTAssertEqual(counter.value, 2)
+    }
+
+    @MainActor
+    private func waitUntilIdle(_ service: TokenStatsService) async {
+        let idle = expectation(description: "Token stats idle")
+        Task { @MainActor in
+            while service.isLoading {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            idle.fulfill()
+        }
+        await fulfillment(of: [idle], timeout: 5.0)
+    }
+
     // MARK: - Test Data
 
     private func makeSampleClaudeJSONL() -> String {
@@ -145,5 +200,18 @@ final class TokenStatsServiceTests: XCTestCase {
         {"timestamp":"\(ts)","message":{"id":"msg_dup","model":"claude-opus-4-6","role":"assistant","usage":{"input_tokens":50,"output_tokens":100,"cache_read_input_tokens":1000,"cache_creation_input_tokens":200}}}
         {"timestamp":"\(ts)","message":{"id":"msg_dup","model":"claude-opus-4-6","role":"assistant","usage":{"input_tokens":50,"output_tokens":500,"cache_read_input_tokens":1000,"cache_creation_input_tokens":200}}}
         """
+    }
+}
+
+private final class ParseCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int {
+        lock.withLock { count }
+    }
+
+    func increment() {
+        lock.withLock { count += 1 }
     }
 }
